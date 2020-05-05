@@ -623,7 +623,7 @@ function handle_autowall()
             {
                 continue;
             }
-            if(vis_length < 12)
+            if(vis_length < 11)
             {
                 Ragebot.IgnoreTarget(enemies[i]);
             }
@@ -672,10 +672,9 @@ function handle_legitaa_safety()
         {
             return true; //epic gamer move
         }
-        var current_latency = Local.Latency();
         var current_framerate = 1 / Globals.Frametime();
         var current_choke = get_choked_ticks_for_entity(local);
-        return current_latency < 100 && current_framerate >= 100 && current_choke < 4; //Quick bandaid check.
+        return current_framerate >= 100 && current_choke < 3; //Quick bandaid check.
     }
     return true;
 }
