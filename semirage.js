@@ -26,7 +26,7 @@ function setup_menu()
             UI.AddCheckbox(current_gun + " prefer bodyaim");
             UI.AddCheckbox(current_gun + " prefer safepoint");
         }
-        UI.AddDropdown(current_gun + " w/o autowall key", ["Autowall on triggers", "No autowall", "Full autowall"]);
+        UI.AddDropdown(current_gun + " w/o autowall key", ["Autowall on triggers", "No autowall"]);
         UI.AddMultiDropdown(current_gun + " autowall triggers", ["Hitbox visible", "Hurt us", "In autowall FOV", "Possible lethal damage", "We are low HP", "Ragebot shot him before"]);
         UI.AddSliderInt(current_gun + " hitbox amount", 1, 10);
         UI.AddSliderFloat(current_gun + " time after hurt (s)", 0.01, 10);
