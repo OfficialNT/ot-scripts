@@ -1,3 +1,6 @@
+//Some credits: April for the freestanding, depresso/whatever he goes by for mathlib.
+//I probably stole shit from somewhere else as well, but I don't remember from where anymore rofl
+
 var js_items = ["Misc", "JAVASCRIPT", "Script Items"];
 var rbot_weapon_types = ["GENERAL", "PISTOL", "HEAVY PISTOL", "SCOUT", "AWP", "AUTOSNIPER"];
 var reworked_lbot_guns = ["Pistol", "Heavy pistol", "Heavy", "Rifle", "SMG", "Scout", "AWP", "Autosnipers"];
