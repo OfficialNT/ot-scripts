@@ -9,7 +9,7 @@ var mathlib = require("mathlib.js") //damn.......
 function setup_menu()
 {
     UI.AddCheckbox("Enable semirage assist");
-    UI.AddHotkey("Enable ragebot");
+    UI.AddHotkey("Legitbot aimkey");
     UI.AddHotkey("Autowall");
     UI.AddDropdown("Currently configured weapon", reworked_lbot_guns);
     for(var i = 0; i < 8; i++)
@@ -19,6 +19,16 @@ function setup_menu()
         UI.AddSliderFloat(current_gun + " dynamic FOV min", 0.1, 180.0);
         UI.AddSliderFloat(current_gun + " dynamic FOV max", 0.1, 180.0);
         UI.AddSliderFloat(current_gun + " dynamic FOV modifier", 0.34, 1);
+        UI.AddDropdown(current_gun + " legit hitbox selection mode", ["Closest to crosshair", "Most damage"]);
+        UI.AddSliderFloat(current_gun + " legit FOV", 0.1, 30);
+        UI.AddSliderFloat(current_gun + " mod smooth FOV", 0.1, 10);
+        UI.AddSliderFloat(current_gun + " legit smooth", 2.5, 15);
+        UI.AddSliderFloat(current_gun + " mod smooth", 2.5, 15);
+        UI.AddSliderFloat(current_gun + " RCS (p)", 0.0, 0.25);
+        UI.AddSliderFloat(current_gun + " RCS (y)", 0.0, 0.25);
+        UI.AddSliderInt(current_gun + " legit mindmg", 1, 100);
+        UI.AddSliderInt(current_gun + " legit health+", 0, 20);
+        UI.AddSliderFloat(current_gun + " kill delay", 0.01, 1.5);
         if(i == 2 || i == 3 || i == 4)
         {
             UI.AddSliderInt(current_gun + " minimum damage", 0, 130);
@@ -26,7 +36,7 @@ function setup_menu()
             UI.AddCheckbox(current_gun + " prefer bodyaim");
             UI.AddCheckbox(current_gun + " prefer safepoint");
         }
-        UI.AddDropdown(current_gun + " w/o autowall key", ["Autowall on triggers", "No autowall"]);
+        UI.AddDropdown(current_gun + " w/o autowall key", ["Autowall on triggers", "No autowall", "Full autowall"]);
         UI.AddMultiDropdown(current_gun + " autowall triggers", ["Hitbox visible", "Hurt us", "In autowall FOV", "Possible lethal damage", "We are low HP", "Ragebot shot him before"]);
         UI.AddSliderInt(current_gun + " hitbox amount", 1, 10);
         UI.AddSliderFloat(current_gun + " time after hurt (s)", 0.01, 10);
@@ -40,19 +50,19 @@ function setup_menu()
     UI.AddSliderInt("Normal choke", 0, 8);
     UI.AddCheckbox("Enable legit AA");
     UI.AddCheckbox("Safety checks");
-    UI.AddDropdown("LBY Mode", ["Safe", "Extend"]);
+    UI.AddDropdown("LBY Mode", ["Safe", "Extend", "Break", "Centered"]);
     UI.AddHotkey("Legit AA juke (only in rage)");
     UI.AddCheckbox("Legit AA edge detection");
     UI.AddDropdown("Peeking mode", ["Peek with fake", "Peek with real"]);
-    UI.AddCheckbox("Fix slowwalk on legitbot");
-    UI.AddMultiDropdown("Semirage assist indicators", ["Aimbot status", "Autowall", "Legit AA", "Choke", "Inaccuracy", "Aim mode", "Enemy possible real yaw side", "Fake arrows", "Watermark"]);
+    UI.AddMultiDropdown("Semirage assist indicators", ["Aimbot status", "Autowall", "Legit AA", "Choke", "Inaccuracy", "Aim mode", "Enemy possible real yaw side", "Watermark"]);
     
-    UI.AddSliderFloat("Indicator offset", 0.2, 1);
-    UI.AddColorPicker("AA arrow color");
+    UI.AddSliderFloat("Indicator offset (x)", 0.55, 0.8);
+    UI.AddSliderFloat("Indicator offset (y)", 0.1, 0.9);
+    UI.SetValue(js_items, "Indicator offset (y)", 0.5);
     UI.AddColorPicker("Side text color");
 
     UI.AddColorPicker("Watermark accent color");
-
+    UI.SetColor(js_items, "Watermark accent color", [255, 255, 255, 200]);
     UI.AddCheckbox("Rage shot logs");
 
     UI.AddCheckbox("Trashtalk");
@@ -64,7 +74,6 @@ var local = 0;
 
 var script_config = {
 rbot_active: 0,
-rbot_lbot_switch_active: 0,
 lbot_active: 0,
 script_active: 0,
 rbot_fov_min: -1,
@@ -76,13 +85,27 @@ rbot_optional_mindmg: -1,
 rbot_optional_hc: -1,
 rbot_optional_baim: 0,
 rbot_optional_safepoint: 0,
+
 autowall_active: 0,
 autowall_mode: -1,
+
 legit_autowall_modifiers: -1,
 legit_autowall_hitbox_amt: -1,
 legit_autowall_hurt_time: -1,
 legit_autowall_lethal_override: -1,
 legit_autowall_ragebot_decay_time: -1,
+
+lbot_tgt_select: -1,
+lbot_fov: -1,
+lbot_mod_fov: -1,
+lbot_smooth: -1,
+lbot_mod_smooth: -1,
+lbot_rcs_x: -1,
+lbot_rcs_y: -1,
+lbot_mindmg: -1,
+lbot_hp_override: -1,
+lbot_kill_delay: -1,
+
 legitaa_active: 0,
 legitaa_safety_active: 0,
 legitaa_lby_mode: -1,
@@ -90,16 +113,19 @@ legitaa_juke_active: 0,
 legitaa_edge_active: 0,
 legitaa_edge_distance: -1,
 legitaa_peek_behavior: -1,
-slowwalk_fix: 0,
+
 gay_fakelag_active: 0,
 gay_fakelag_mindmg: -1,
 gay_fakelag_vis_choke: -1,
 gay_fakelag_invis_choke: -1,
+
 indicator_picks: -1,
 indicator_offset: -1,
-indicator_legitaa_col: [0, 0, 0, 255],
+indicator_offset_2: -1,
+
 indicator_enemy_side_col: [0, 0, 0, 255],
 indicator_watermark_accent_col: [0, 0, 0, 255],
+
 rage_shot_log: 0,
 trashtalk: 0,
 };
@@ -193,20 +219,18 @@ function convert_weapon_index_into_rbot_idx(wpn_index) //Converts current weapon
             return 4;
         case 7:
             return 5;
+        case -1:
+            return -1;
     }
 }
 
 var prev_wpntype_settings = -1;
 function update_settings()
 {
-    script_config.rbot_active = UI.IsHotkeyActive("Rage", "General", "Enabled");
-    script_config.lbot_active = UI.IsHotkeyActive("Legit", "GENERAL", "General", "Enabled");
     script_config.script_active = UI.GetValue(js_items, "Enable semirage assist");
-    script_config.rbot_lbot_switch_active = UI.IsHotkeyActive(js_items, "Enable ragebot");
-    if(prev_wpntype_settings == -1)
-    {
-        script_config.rbot_lbot_switch_active = true; //for legitaa with knife (p100 ghettofix)
-    }
+
+    script_config.rbot_active = UI.IsHotkeyActive("Rage", "General", "Enabled");
+    script_config.lbot_active = UI.IsHotkeyActive(js_items, "Legitbot aimkey");
     script_config.autowall_active = UI.IsHotkeyActive(js_items, "Autowall");
     
     script_config.legitaa_active = UI.GetValue(js_items, "Enable legit AA");
@@ -215,16 +239,18 @@ function update_settings()
     script_config.legitaa_juke_active = UI.IsHotkeyActive(js_items, "Legit AA juke");
     script_config.legitaa_edge_active = UI.GetValue(js_items, "Legit AA edge detection");
     script_config.legitaa_peek_behavior = UI.GetValue(js_items, "Peeking mode");
-    script_config.slowwalk_fix = UI.GetValue(js_items, "Fix slowwalk on legitbot");
+
     script_config.gay_fakelag_active = UI.GetValue(js_items, "Trigger fakelag on visible");
     script_config.gay_fakelag_mindmg = UI.GetValue(js_items, "Minimum damage");
     script_config.gay_fakelag_vis_choke = UI.GetValue(js_items, "Choke on visible");
     script_config.gay_fakelag_invis_choke = UI.GetValue(js_items, "Normal choke");
+
     script_config.indicator_picks = UI.GetValue(js_items, "Semirage assist indicators");
-    script_config.indicator_offset = UI.GetValue(js_items, "Indicator offset");
-    script_config.indicator_legitaa_col = UI.GetColor(js_items, "AA arrow color");
+    script_config.indicator_offset = UI.GetValue(js_items, "Indicator offset (x)");
+    script_config.indicator_offset_2 = UI.GetValue(js_items, "Indicator offset (y)");
     script_config.indicator_enemy_side_col = UI.GetColor(js_items, "Side text color");
     script_config.indicator_watermark_accent_col = UI.GetColor(js_items, "Watermark accent color");
+
     script_config.rage_shot_log = UI.GetValue(js_items, "Rage shot logs");
     script_config.trashtalk = UI.GetValue(js_items, "Trashtalk");
     if(World.GetServerString() == "" || !Entity.IsValid(local) || !Entity.IsAlive(local)) 
@@ -251,6 +277,18 @@ function update_settings()
     script_config.rbot_fov_max = UI.GetValue(js_items, weapon_name + " dynamic FOV max");
     script_config.rbot_fov_mod = UI.GetValue(js_items, weapon_name + " dynamic FOV modifier");
     script_config.rbot_fov_base_distance = UI.GetValue(js_items, weapon_name + " dynamic FOV base");
+
+    script_config.lbot_fov = UI.GetValue(js_items, weapon_name + " legit FOV");
+    script_config.lbot_mod_fov = UI.GetValue(js_items, weapon_name + " mod smooth FOV");
+    script_config.lbot_smooth = UI.GetValue(js_items, weapon_name + " legit smooth");
+    script_config.lbot_mod_smooth = UI.GetValue(js_items, weapon_name + " mod smooth");
+    script_config.lbot_tgt_select = UI.GetValue(js_items, weapon_name + " legit hitbox selection mode");
+    script_config.lbot_rcs_x = UI.GetValue(js_items, weapon_name + " RCS (p)");
+    script_config.lbot_rcs_y = UI.GetValue(js_items, weapon_name + " RCS (y)");
+    script_config.lbot_mindmg = UI.GetValue(js_items, weapon_name + " legit mindmg");
+    script_config.lbot_hp_override = UI.GetValue(js_items, weapon_name + " legit health+");
+    script_config.lbot_kill_delay = UI.GetValue(js_items, weapon_name + " kill delay");
+
     if(convert_weapon_index_into_rbot_idx(local_weapon_type) == 0)
     {
         script_config.rbot_optional_mindmg = UI.GetValue(js_items, weapon_name + " minimum damage");
@@ -280,7 +318,7 @@ function handle_visibility()
     if(script_config.script_active != last_script_enabled_state || last_legitaa_mode != script_config.legitaa_active || was_legitaa_edge_active != script_config.legitaa_edge_active || indicator_picks != old_indicator_picks || last_fakelag_state != script_config.gay_fakelag_active)
     {
         UI.SetEnabled(js_items, "Autowall", script_config.script_active);
-        UI.SetEnabled(js_items, "Enable ragebot", script_config.script_active);
+        UI.SetEnabled(js_items, "Legitbot aimkey", script_config.script_active);
         UI.SetEnabled(js_items, "Currently configured weapon", script_config.script_active);
 
         UI.SetEnabled(js_items, "Enable legit AA", script_config.script_active);
@@ -290,13 +328,13 @@ function handle_visibility()
         
         UI.SetEnabled(js_items, "Legit AA edge detection", script_config.script_active && script_config.legitaa_active);
         UI.SetEnabled(js_items, "Peeking mode", script_config.script_active && script_config.legitaa_active && script_config.legitaa_edge_active);
-        UI.SetEnabled(js_items, "Fix slowwalk on legitbot", script_config.script_active);
         UI.SetEnabled(js_items, "Semirage assist indicators", script_config.script_active);
         
-        UI.SetEnabled(js_items, "Indicator offset", script_config.script_active);
+        UI.SetEnabled(js_items, "Indicator offset (x)", script_config.script_active);
+        UI.SetEnabled(js_items, "Indicator offset (y)", script_config.script_active);
+
         UI.SetEnabled(js_items, "Side text color", script_config.script_active && indicator_picks & (1 << 6));
-        UI.SetEnabled(js_items, "AA arrow color", script_config.script_active && indicator_picks & (1 << 7));
-        UI.SetEnabled(js_items, "Watermark accent color", script_config.script_active && indicator_picks & (1 << 8));
+        UI.SetEnabled(js_items, "Watermark accent color", script_config.script_active && indicator_picks & (1 << 7));
         UI.SetEnabled(js_items, "Rage shot logs", script_config.script_active);
         UI.SetEnabled(js_items, "Trashtalk", script_config.script_active);
 
@@ -319,6 +357,18 @@ function handle_visibility()
             UI.SetEnabled(js_items, weapon_name + " dynamic FOV min", script_config.script_active && cur_selected_gun == i);
             UI.SetEnabled(js_items, weapon_name + " dynamic FOV max", script_config.script_active && cur_selected_gun == i);
             UI.SetEnabled(js_items, weapon_name + " dynamic FOV modifier", script_config.script_active && cur_selected_gun == i);
+
+            UI.SetEnabled(js_items, weapon_name + " legit hitbox selection mode", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled(js_items, weapon_name + " legit FOV", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled(js_items, weapon_name + " mod smooth FOV", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled(js_items, weapon_name + " legit smooth", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled(js_items, weapon_name + " mod smooth", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled(js_items, weapon_name + " legit mindmg", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled(js_items, weapon_name + " legit health+", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled(js_items, weapon_name + " RCS (p)", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled(js_items, weapon_name + " RCS (y)", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled(js_items, weapon_name + " kill delay", script_config.script_active && cur_selected_gun == i);
+
             UI.SetEnabled(js_items, weapon_name + " hitchance", script_config.script_active && cur_selected_gun == i && (i == 2 || i == 3 || i == 4));
             UI.SetEnabled(js_items, weapon_name + " minimum damage", script_config.script_active && cur_selected_gun == i && (i == 2 || i == 3 || i == 4));
             UI.SetEnabled(js_items, weapon_name + " prefer bodyaim", script_config.script_active && cur_selected_gun == i && (i == 2 || i == 3 || i == 4));
@@ -371,6 +421,23 @@ function angle_diff(angle1, angle2)
         diff += 360;
     }
     return diff;
+}
+
+function normalize_angle(angle)
+{
+    var ang = angle;
+    ang[0] = clamp(ang[0], -89, 89);
+    ang[1] %= 360;
+    if(ang[1] > 180)
+    {
+        ang[1] -= 360;
+    }
+    if(ang[1] < -180)
+    {
+        ang[1] += 360;
+    }
+    ang[2] = 0;
+    return ang;
 }
 
 function get_choked_ticks_for_entity(entity)
@@ -467,12 +534,7 @@ function calculate_angle(from, to, base_angle)
 	if(delta[0] >= 0.0)
 		ret_angle[1] += 180.0;
 
-	ret_angle[1] %= 360;
-	if(ret_angle[1] > 180)
-        ret_angle[1] -= 360;
-    if(ret_angle[1] < -180)
-        ret_angle[1] += 360;
-	return ret_angle;
+	return normalize_angle(ret_angle);
 }
 
 //Sets up the config for generic weapons and sets up the dynamic ragebot FOV.
@@ -560,11 +622,18 @@ function handle_autowall()
             return;
         }
     }
+
+    var current_weapon = get_weapon_for_config();
+    if(current_weapon == -1)
+    {
+        return; //No point handling autowall if the current weapon is invalid.
+    }
+    var current_rbot_category = convert_weapon_index_into_rbot_idx(current_weapon);
+    var current_rbot_fov = UI.GetValue("Rage", rbot_weapon_types[current_rbot_category], "Targeting", "FOV"); //Quick optimization by ignoring every target outside FOV without tracing to them.
     var local_eyepos = Entity.GetEyePosition(local);
     var local_viewangles = Local.GetViewAngles();
     var enemies = Entity.GetEnemies();
     var enemy_arr_length = enemies.length; //Apparently doing this is slightly faster than getting the array length every iteration
-
     for(var i = 0; i < enemy_arr_length; i++)
     {
         if(Entity.IsValid(enemies[i]) && Entity.IsAlive(enemies[i]) && !Entity.IsDormant(enemies[i]))
@@ -583,50 +652,57 @@ function handle_autowall()
                     continue;
                 }
             }
-            var is_inside_autowall_fov = false;
-            var vis_length = 0;
-            var could_be_lethal = false;
-            for(var j = 0; j <= 18; j++)
+            var head_hitbox = Entity.GetHitboxPosition(enemies[i], 0); //Quick check to see if entity's head hitbox is inside FOV
+            if(typeof(head_hitbox) != "undefined")
             {
-                var hitbox = Entity.GetHitboxPosition(enemies[i], j);
-                if(typeof(hitbox) == "undefined") //sometimes happens l0l
+                var angle_to_head = calculate_angle(local_eyepos, head_hitbox, local_viewangles); var fov = Math.hypot(angle_to_head[0], angle_to_head[1]);
+                if(fov > current_rbot_fov)
                 {
+                    Ragebot.IgnoreTarget(enemies[i]);
                     continue;
                 }
-                if(fov_check)
+            }
+            var is_inside_autowall_fov = false;
+            var can_be_lethal = false;
+            var entity_hp = Entity.GetProp(enemies[i], "CBasePlayer", "m_iHealth");
+            var visible_hitboxes = 0;
+            for(var j = 18; j >= 0; j--) //Might be (within fractions of a bloody millisecond) faster for visiblecheck this way
+            {
+                var hitbox = Entity.GetHitboxPosition(enemies[i], j);
+                if(typeof(hitbox) != "undefined")
                 {
-                    var angle_to_hitbox = calculate_angle(local_eyepos, hitbox, local_viewangles);
-                    var fov = Math.hypot(angle_to_hitbox[0], angle_to_hitbox[1]);
-                    if(autowall_fov > fov)
+                    if(fov_check)
                     {
-                        is_inside_autowall_fov = true;
+                        var angle_to_hitbox = calculate_angle(local_eyepos, hitbox, local_viewangles); var fov_to_hitbox = Math.hypot(angle_to_hitbox[0], angle_to_hitbox[1]);
+                        if(autowall_fov > fov_to_hitbox)
+                        {
+                            is_inside_autowall_fov = true;
+                            break;
+                        }
+                    }
+                    var trace = Trace.Bullet(local, enemies[i], local_eyepos, hitbox);
+                    var damage = trace[1];
+                    if(lethal_check && (damage > entity_hp + lethal_override_hp_amt))
+                    {
+                        can_be_lethal = true;
                         break;
                     }
-                }
-                var trace = Trace.Bullet(local, enemies[i], local_eyepos, hitbox);
-                if(trace[2])
-                {
-                   vis_length++;
-                }
-                if(lethal_check)
-                {
-                    var enemy_hp = Entity.GetProp(enemies[i], "CBasePlayer", "m_iHealth");
-                    if(trace[1] > enemy_hp + lethal_override_hp_amt)
+                    var visible = trace[2];
+                    if(visible)
                     {
-                        could_be_lethal = true;
-                        break;
+                        visible_hitboxes++;
+                        if(visible_hitbox_check && visible_hitboxes >= visible_hitbox_amt)
+                        {
+                            break;
+                        }
                     }
-                }
-                if(visible_hitbox_check && vis_length >= visible_hitbox_amt)
-                {
-                    break;
                 }
             }
-            if(could_be_lethal || is_inside_autowall_fov || (visible_hitbox_check && vis_length >= visible_hitbox_amt))
+            if(is_inside_autowall_fov || can_be_lethal || (visible_hitbox_check && visible_hitboxes >= visible_hitbox_amt))
             {
                 continue;
             }
-            if(vis_length < 11)
+            if(visible_hitboxes < 11)
             {
                 Ragebot.IgnoreTarget(enemies[i]);
             }
@@ -677,22 +753,22 @@ function handle_legitaa_safety()
         }
         var current_framerate = 1 / Globals.Frametime();
         var current_choke = get_choked_ticks_for_entity(local);
-        return current_framerate >= 100 && current_choke < 3; //Quick bandaid check.
+        return current_framerate >= 100 && current_choke < 4; //Quick bandaid check.
     }
     return true;
 }
-function handle_legitaa()
+function handle_legitaa() //there are quite a bit of (probably useless) tricks to hinder the enemy's ability to resolve us here
 {
     var are_we_safe = handle_legitaa_safety();
     if(script_config.legitaa_active && are_we_safe)
     {
-        var used_implementation = script_config.rbot_lbot_switch_active ? 1 : 0;
         var is_autodirection_used = script_config.legitaa_edge_active == 1;
         var is_peek_invert_active = script_config.legitaa_peek_behavior == 1;
         var lby_mode = script_config.legitaa_lby_mode;
 
         var local_velocity = Entity.GetProp(local, "CBasePlayer", "m_vecVelocity[0]");
         var local_velocity_length = mathlib.VectorLength(local_velocity);
+        var in_slowwalk = UI.IsHotkeyActive("Anti-Aim", "Extra", "Slow walk") && local_velocity_length > 5;
         var current_inversion = indicator_dir;
         if(is_autodirection_used)
         {
@@ -717,52 +793,73 @@ function handle_legitaa()
                 current_inversion *= -1; //To fuck up antifreestanding resolvers (and most legit AA resolvers should be doing anti-freestanding at some point in time, otherwise they're horribly lucky.)
             }
         }
-        if(used_implementation == 1)
-        {
-            UI.SetValue("Misc", "PERFORMANCE & INFORMATION", "Information", "Restrictions", 0);
-            UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Enabled", 1);
-            UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Yaw offset", 180);
-            UI.SetValue("Anti-Aim", "Extra", "Pitch", 0);
-            UI.SetValue("Anti-Aim", "Fake angles", "Enabled", 1);
+        UI.SetValue("Misc", "PERFORMANCE & INFORMATION", "Information", "Restrictions", 0);
+        UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Enabled", 1);
+        UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Yaw offset", 180);
+        UI.SetValue("Anti-Aim", "Extra", "Pitch", 0);
+        UI.SetValue("Anti-Aim", "Fake angles", "Enabled", 1);
 
-            if(!is_autodirection_used)
-            {
-                current_inversion = UI.IsHotkeyActive("Anti-Aim", "Fake angles", "Inverter") == 1 ? -1 : 1;
-            }
-            
-            AntiAim.SetOverride(1);
-            var should_use_juke = lby_mode == 1 && script_config.legitaa_juke_active; //If we're using "safe" LBY, we can't exactly trick dumb resolvers into trying to resolve us as if we were using opposite.
-            var real_yaw_offset = 60 * current_inversion * (should_use_juke ? -1 : 1);
-            var lower_body_yaw_offset = lby_mode == 1 ? (100 * -current_inversion) : 0;
-
-            AntiAim.SetRealOffset(real_yaw_offset);
-            AntiAim.SetLBYOffset(lower_body_yaw_offset);
-            indicator_dir = current_inversion;
-        }
-        else
+        if(!is_autodirection_used)
         {
-            UI.SetValue("Anti-Aim", "Fake angles", "Enabled", 0);
-            UI.SetValue("Anti-Aim", "Legit Anti-Aim", "Enabled", 1);
-            UI.SetValue("Anti-Aim", "Legit Anti-Aim", "Extend angle", lby_mode == 1);
-            
-            var current_side = UI.IsHotkeyActive("Anti-Aim", "Legit Anti-Aim", "Direction key") == 1 ? 1 : -1;
-            if(!is_autodirection_used)
-            {
-                indicator_dir = current_side;
-                return;
-            }
-            
-            if(current_inversion != current_side)
-            {
-                UI.ToggleHotkey("Anti-Aim", "Legit Anti-Aim", "Direction key");
-            }
-            indicator_dir = current_inversion;
+            current_inversion = UI.IsHotkeyActive("Anti-Aim", "Fake angles", "Inverter") == 1 ? -1 : 1;
         }
+            
+        AntiAim.SetOverride(1);
+        var should_use_juke = lby_mode == 1 && script_config.legitaa_juke_active; //If we're using "safe" LBY, we can't exactly trick dumb resolvers into trying to resolve us as if we were using opposite.
+        var real_yaw_offset = 60 * current_inversion * (should_use_juke ? -1 : 1);
+        if(Globals.Tickcount() % 9 == 0 && lby_mode != 0)
+        {
+            real_yaw_offset *= 0.7;
+        }
+        var lower_body_yaw_offset = 0;
+        if(lby_mode == 1)
+        {
+            lower_body_yaw_offset = (60 * -current_inversion) - ((Globals.Curtime() * 120 / random_float(0.5, 10) % 121 / random_float(0.2, 3)) * current_inversion);
+            //just for the keks, powerful desink men)))
+            if(Globals.Tickcount() % 7 == 0)
+            {
+                lower_body_yaw_offset *= -1;
+            }
+        }
+        else if(lby_mode == 2)
+        {
+            var local_eye_yaw_netvar = Entity.GetProp(local, "CCSPlayer", "m_angEyeAngles")[1];
+            var real_yaw = Local.GetRealYaw();
+            var fake_yaw = Local.GetFakeYaw();
+            
+            var local_eye_yaw_real_delta = angle_diff(local_eye_yaw_netvar, real_yaw);
+            var local_eye_yaw_fake_delta = angle_diff(local_eye_yaw_netvar, fake_yaw);
+
+            real_yaw_offset = local_eye_yaw_real_delta > 35 ? (15 * current_inversion) : (60 * random_float(0.6, 2.5) * current_inversion); //MMMM magic numbers the love of my life
+            lower_body_yaw_offset = 160 * -current_inversion + local_eye_yaw_fake_delta < 50 ? ((Globals.Curtime() * 180 / random_float(-5, 5) % 240) * -current_inversion) : ((Globals.Curtime() * 360 / random_float(-0.1, 0.3) % 91) * -current_inversion);
+            //AND EVEN MORE MAGIC NUMBERS
+            if(Globals.Tickcount() % 3 == 0)
+            {
+                lower_body_yaw_offset *= -1.5;
+            }
+        } //it was 1am when i wrote this, I doubt it will actually do anything rofl
+        //please dont paste this PLEASE I BEG YOU
+        else if (lby_mode == 3)
+        {
+            real_yaw_offset = (local_velocity_length > 3.3 ? 60 : 15) * current_inversion;
+            lower_body_yaw_offset = 120 * -current_inversion;
+            if(Globals.Tickcount() % 7 == 0)
+            {
+                lower_body_yaw_offset = Math.random() < 0.5 ? 0 : 180;
+            }
+        }
+        if(in_slowwalk)
+        {
+            real_yaw_offset *= random_float(0.15, 1); //hf resolving this :)
+        }
+        
+        AntiAim.SetRealOffset(real_yaw_offset);
+        AntiAim.SetLBYOffset(lower_body_yaw_offset);
+        indicator_dir = current_inversion;
     }
     else
     {
         AntiAim.SetOverride(0); //Bad code, but seems to flick less due to reasons I have no clue about.
-        UI.SetValue("Anti-Aim", "Legit Anti-Aim", "Enabled", 0);
         UI.SetValue("Anti-Aim", "Rage Anti-Aim", "Enabled", 0);
     }
 }
@@ -824,86 +921,134 @@ function handle_edge_detection(entity, step) //I recommend the step being divisi
     return 0;
 }
 
+function aa_shit_color(abs_yaw, desired_alpha) //dunno why I have it in a separate function, stole from april cause cba 
+{
+    return [190 - (abs_yaw * 75 / 40), 40 + (abs_yaw * 146 / 60), 10, desired_alpha];
+}
 
 function handle_indicators()
 {
     if(script_config.script_active && script_config.indicator_picks)
     {
         var screensize = Render.GetScreenSize();
-        var font = Render.AddFont("Tahoma", 12, 700);
+        var screen_center_x = screensize[0] * script_config.indicator_offset_2; //not necessarily center, but whatever, its centered by default.
+        var font = Render.AddFont("Verdana", 10, 800);
         var watermark_font = Render.AddFont("Verdana", 8, 250);
         if(Entity.IsValid(local) && Entity.IsAlive(local))
         {
             var base_yaw = screensize[1] * script_config.indicator_offset; //not actually yaw l0l
             if(script_config.indicator_picks & (1 << 0))
             {
-                var string_size = Render.TextSizeCustom("Aimbot: ", font);
-                
-                var is_aimbot_active = script_config.rbot_lbot_switch_active ? script_config.rbot_active : script_config.lbot_active;
-                var text = is_aimbot_active ? "ON" : "OFF";
+                var is_aimbot_active = script_config.rbot_active ? true : script_config.lbot_active;
+                var text = "AIM"
                 var weapon_type = get_weapon_for_config();
-                if(weapon_type != -1)
+                var converted_ragebot_type = convert_weapon_index_into_rbot_idx(weapon_type);
+                if(converted_ragebot_type != -1 && script_config.rbot_active)
                 {
-                    var converted_ragebot_type = convert_weapon_index_into_rbot_idx(weapon_type);
                     var weapon_cur_fov = UI.GetValue("Rage", rbot_weapon_types[converted_ragebot_type], "Targeting", "FOV");
-                    var string = ", FOV: " + weapon_cur_fov;
-                    text += (script_config.rbot_lbot_switch_active ? string : "");
+                    var string = " FOV: " + weapon_cur_fov;
+                    text += string;
                 }
-                Render.StringCustom(15, base_yaw, 0, "Aimbot: ", [255, 255, 255, 255], font);
-                Render.StringCustom(15 + string_size[0], base_yaw, 0, text, is_aimbot_active ? [0, 255, 0, 255] : [255, 0, 0, 255], font);
-                base_yaw += 20;
+                Render.StringCustom(screen_center_x, base_yaw, 1, text, (is_aimbot_active ? [77.5, 186, 10, 200] : [255, 25, 30, 200]), font);
+                base_yaw += 15;
+                if(converted_ragebot_type != -1 && script_config.rbot_active)
+                {
+                    var are_we_preferring_safety = UI.GetValue("Rage", rbot_weapon_types[converted_ragebot_type], "Accuracy", "Prefer safe point");
+                    var safety_forced = UI.IsHotkeyActive("Rage", "GENERAL", "General", "Force safe point");
+                    
+                    if(are_we_preferring_safety || safety_forced)
+                    {
+                        var color = safety_forced ? [77.5, 186, 10, 200] : [190, 170, 18, 200];
+                        Render.StringCustom(screen_center_x, base_yaw, 1, "SAFE", color, font);
+                        base_yaw += 15;
+                    }
+                    
+                    var are_we_preferring_bodyaim = UI.GetValue("Rage", rbot_weapon_types[converted_ragebot_type], "Accuracy", "Prefer body aim");
+                    var bodyaim_forced = UI.IsHotkeyActive("Rage", "GENERAL", "General", "Force body aim");
+
+                    if(are_we_preferring_bodyaim || bodyaim_forced)
+                    {
+                        var color = bodyaim_forced ? [77.5, 186, 10, 200] : [190, 170, 18, 200];
+                        Render.StringCustom(screen_center_x, base_yaw, 1, "BAIM", color, font);
+                        base_yaw += 15;
+                    }
+
+                    var resolver_override_active = UI.IsHotkeyActive("Rage", "GENERAL", "General", "Resolver override");
+                    if(resolver_override_active)
+                    {
+                        Render.StringCustom(screen_center_x, base_yaw, 1, "OVERRIDE", [77.5, 186, 10, 200], font);
+                        base_yaw += 15;
+                    }
+                }
             }
             if(script_config.indicator_picks & (1 << 1))
             {
-                var string_size = Render.TextSizeCustom("Autowall: ", font);
-                Render.StringCustom(15, base_yaw, 0, "Autowall: " , [255, 255, 255, 255], font);
-                Render.StringCustom(15 + string_size[0], base_yaw, 0, (script_config.autowall_active ? "ON" : (script_config.autowall_mode == 0 ? "LEGIT" : "OFF")), (script_config.autowall_active ? [0, 255, 0, 255] : (script_config.autowall_mode == 0 ? [232, 216, 35, 255] : [255, 0, 0, 255])), font);
-                base_yaw += 20;
+                var color = script_config.autowall_active || script_config.autowall_mode == 2 ? [77.5, 186, 10, 200] : (script_config.autowall_mode == 0 ? [190, 170, 18, 200] : [255, 25, 30, 200]);
+                Render.StringCustom(screen_center_x, base_yaw, 1, "AW", color, font);
+                base_yaw += 15;
             }
             if(script_config.indicator_picks & (1 << 2))
             {
-                var string_size = Render.TextSizeCustom("Fake: ", font);
-                Render.StringCustom(15, base_yaw, 0, "Fake: ", [255, 255, 255, 255], font);
                 var fake_yaw = Local.GetFakeYaw();
                 var real_yaw = Local.GetRealYaw();
+                var diff = Math.round(angle_diff(fake_yaw, real_yaw));
 
-                var difference = angle_diff(fake_yaw, real_yaw);
-                var text = script_config.legitaa_active ? ("ON, fake delta: " + Math.round(difference) + (script_config.legitaa_juke_active ? " (in juke)" : "")) : "OFF"; 
-                Render.StringCustom(15 + string_size[0], base_yaw, 0, text, (script_config.legitaa_active ? (script_config.legitaa_juke_active ? [150, 35, 232, 255] : [0, 255, 0, 255]) : [255, 0, 0, 255]), font);
-                base_yaw += 20;
+                var text = "AA";
+                if(script_config.legitaa_lby_mode == 1 && script_config.legitaa_juke_active)
+                {
+                    text += " (JUKE)";
+                }
+                var abs_clamped_diff = clamp(Math.abs(diff), 0, 60);
+                var proper_col = aa_shit_color(abs_clamped_diff, 200);
+                Render.StringCustom(screen_center_x, base_yaw, 1, text, proper_col, font);
+                base_yaw += 15;
+
+                var current_fake_side = indicator_dir; //Actually real side but w/e
+                var screen_center_y = screensize[1] * 0.5;
+                var screen_side_top = screensize[1] * 0.495;
+                var screen_side_bottom = screensize[1] * 0.505;
+
+                switch(current_fake_side)
+                {
+                    case -1: 
+                        var right_front = screensize[0] * 0.541; 
+                        var right_end = screensize[0] * 0.535;
+                            
+                        Render.Polygon([[right_front, screen_center_y], [right_end, screen_center_y], [right_end, screen_side_top]], proper_col);
+                        Render.Polygon([[right_front, screen_center_y], [right_end, screen_side_bottom], [right_end, screen_center_y]], proper_col);
+                        break;
+                    case 1:
+                        var left_front = screensize[0] * 0.459;
+                        var left_end = screensize[0] * 0.465;
+        
+                        Render.Polygon([[left_end, screen_center_y], [left_front, screen_center_y], [left_end, screen_side_top]], proper_col);
+                        Render.Polygon([[left_end, screen_side_bottom], [left_front, screen_center_y], [left_end, screen_center_y]], proper_col);
+                }
             }
             if(script_config.indicator_picks & (1 << 3))
             {
-                var string_size = Render.TextSizeCustom("Choke: ", font);
-                var choked_fl_ticks = get_choked_ticks_for_entity(local);
-                var cool_representation = "";
-                for(var i = 0; i < choked_fl_ticks; i++)
-                {
-                    cool_representation += "/";
-                }
-                Render.StringCustom(15, base_yaw, 0, "Choke: " + cool_representation, [255, 255, 255, 255], font);
-                Render.StringCustom(15 + string_size[0], base_yaw, 0, cool_representation, [0, 255, 0, 255], font);
-                base_yaw += 20;
+                var string = "CHOKE: " + get_choked_ticks_for_entity(local);
+                Render.StringCustom(screen_center_x, base_yaw, 1, string, [77.5, 186, 10, 200], font);
+                base_yaw += 15;
             }
             if(script_config.indicator_picks & (1 << 4))
             {
-                var string_size = Render.TextSizeCustom("Inaccuracy: ", font);
                 var inaccuracy = Local.GetInaccuracy();
                 if(inaccuracy == 0)
                 {
-                    inaccuracy = 0.001;
+                    inaccuracy = 0.01;
                 }
-                var inaccuracy_text = 1 / inaccuracy < 50 ? "High" : "Low";
-                Render.StringCustom(15, base_yaw, 0, "Inaccuracy: ", [255, 255, 255, 255], font);
-                Render.StringCustom(15 + string_size[0], base_yaw, 0, inaccuracy_text, (inaccuracy_text == "Low" ? [0, 255, 0, 255] : [255, 0, 0, 255]), font);
-                base_yaw += 20;
+                var hc = 1 / inaccuracy;
+                var inaccuracy_text = "INACC: ";
+                inaccuracy_text += hc > 80 ? "LOW" : "HIGH";
+                Render.StringCustom(screen_center_x, base_yaw, 1, inaccuracy_text, (hc > 80 ? [77.5, 186, 10, 200] : [255, 25, 30, 200]), font);
+                base_yaw += 15;
             }
             if(script_config.indicator_picks & (1 << 5))
             {
-                var string_size = Render.TextSizeCustom("Aim mode: ", font);
-                var text = (script_config.rbot_lbot_switch_active ? "RAGE" : "LEGIT");
-                Render.StringCustom(15, base_yaw, 0, "Aim mode: ", [255, 255, 255, 255], font);
-                Render.StringCustom(15 + string_size[0], base_yaw, 0, text, (text == "RAGE" ? [135, 50, 168, 255] : [39, 214, 202, 255]), font);
+                var text = (script_config.rbot_active ? "RAGE" : "LEGIT");
+                var col = script_config.rbot_active ? [135, 50, 168, 255] : [39, 214, 202, 255];
+                Render.StringCustom(screen_center_x, base_yaw, 1, text, col, font);
             }
             if(script_config.indicator_picks & (1 << 6))
             {
@@ -937,49 +1082,9 @@ function handle_indicators()
                     }
                 }
             }
-            if(script_config.indicator_picks & (1 << 7)) //Shit code incoming lol
-            {
-                var current_fake_side = indicator_dir; //Actually real side but w/e
-                var screen_center_y = screensize[1] * 0.5;
-                var screen_side_top = screensize[1] * 0.495;
-                var screen_side_bottom = screensize[1] * 0.505;
-
-                var col = script_config.indicator_legitaa_col;
-
-                if(current_fake_side == -1) //The lines are for cool gamer style outlines around the polygons
-                {
-                    var right_front = screensize[0] * 0.54; 
-                    var right_end = screensize[0] * 0.535;
-                    var right_side = screensize[0] * 0.533;
-                    
-                    Render.Line(right_front, screen_center_y, right_side, screen_side_top, col);
-                    Render.Line(right_end, screen_center_y, right_side, screen_side_top, col);
-
-                    Render.Line(right_front, screen_center_y, right_side, screen_side_bottom, col);
-                    Render.Line(right_end, screen_center_y, right_side, screen_side_bottom, col);
-                    Render.Polygon([[right_front, screen_center_y], [right_end, screen_center_y], [right_side, screen_side_top]], [col[0], col[1], col[2], col[3] * 0.45]);
-                    Render.Polygon([[right_front, screen_center_y], [right_side, screen_side_bottom], [right_end, screen_center_y]], [col[0], col[1], col[2], col[3] * 0.45]);
-                }
-                else if(current_fake_side == 1)
-                {
-                    var left_front = screensize[0] * 0.46;
-                    var left_end = screensize[0] * 0.465;
-                    var left_side = screensize[0] * 0.467;
-
-                    Render.Line(left_front, screen_center_y, left_side, screen_side_top, col);
-                    Render.Line(left_end, screen_center_y, left_side, screen_side_top, col);
-
-                    Render.Line(left_front, screen_center_y, left_side, screen_side_bottom, col); 
-                    Render.Line(left_side, screen_side_bottom, left_end, screen_center_y, col);
-
-                    Render.Polygon([[left_end, screen_center_y], [left_front, screen_center_y], [left_side, screen_side_top]], [col[0], col[1], col[2], col[3] * 0.45]);
-                    Render.Polygon([[left_side, screen_side_bottom], [left_front, screen_center_y], [left_end, screen_center_y]], [col[0], col[1], col[2], col[3] * 0.45]);
-                }
-            }
         }
-        if(script_config.indicator_picks & (1 << 8)) //gay watermark
+        if(script_config.indicator_picks & (1 << 7)) //gay watermark
         {
-            var watermark_string = "";
             var server_ip = World.GetServerString();
             var are_we_ingame = server_ip != "" && Entity.IsValid(local);
             if(server_ip == "valve")
@@ -992,6 +1097,7 @@ function handle_indicators()
             }
             var accent_color = script_config.indicator_watermark_accent_col;
             var watermark_nickname = Cheat.GetUsername();
+            var watermark_string = "onetap x semirage assist | user: " + watermark_nickname;
             if(are_we_ingame)
             {
                 var kills = Entity.GetProp(local, "CPlayerResource", "m_iKills");
@@ -1000,30 +1106,149 @@ function handle_indicators()
                 var kd_ratio = deaths == 0 ? kills : (kills / deaths);
                 var kd_string = kd_ratio.toFixed(2);
                 
-                watermark_string = "onetap.su & semirage assist | user: " + watermark_nickname + " | kills: " + kills + " | deaths: " + deaths + " | k/d: " + kd_string + " | host: " + server_ip;
-            }
-            else
-            {
-                watermark_string = "onetap.su && semirage assist | user: " + watermark_nickname;
+                watermark_string += (" | kills: " + kills + " | deaths: " + deaths + " | k/d: " + kd_string + " | host: " + server_ip);
             }
             var string_size = Render.TextSizeCustom(watermark_string, watermark_font);
-            Render.FilledRect(screensize[0] * 0.99 - string_size[0], 8, string_size[0] + 10, 20, [0, 0, 0, 150]);
+            Render.GradientRect(screensize[0] * 0.99 - string_size[0], 8, string_size[0] + 10, 20, 1, [0, 0, 0, 150], [0, 0, 0, 100]);
             Render.StringCustom(screensize[0] * 0.99 - string_size[0] + 5, 11, 0, watermark_string, accent_color, watermark_font);
-            Render.Line(screensize[0] * 0.99 - string_size[0], 28, screensize[0] * 0.99 + 9, 28, accent_color);
             Render.GradientRect(screensize[0] * 0.99 - string_size[0], 27, string_size[0] + 10, 3, 1, accent_color, [accent_color[0] * 0.75, accent_color[1]*0.75, accent_color[2]*0.75, accent_color[3] * 0.75]);
         }
     }
 }
 
-function handle_switch()
+//Legitbot stuff begins about here. Get ready for bad code.
+function scan_targets(targeting_mode, hp_override_amt, min_damage, max_fov) //Kinda sad I can't really scan backtrack records using Onetap's API. Especially not with me using the ragebot.
 {
-    UI.SetValue("Rage", "GENERAL", "Enabled", script_config.rbot_lbot_switch_active);
-    UI.SetValue("Legit", "GENERAL", "General", "Enabled", !script_config.rbot_lbot_switch_active);
+    var local_eyepos = Entity.GetEyePosition(local);
+    var local_viewangles = Local.GetViewAngles();
+    var hitboxes = [];
+
+    var enemies = Entity.GetEnemies();
+    var enemy_len = enemies.length;
+    if(enemy_len == 0)
+    {
+        return {pos: [0, 0, 0], fov: -1};
+    }
+    var best_fov = 999;
+    var target = -1;
+    var temp_tgt_hitboxes = [];
+    for(var i = 0; i < enemy_len; i++)
+    {
+        if(Entity.IsValid(enemies[i]) && Entity.IsAlive(enemies[i]) && !Entity.IsDormant(enemies[i]))
+        {
+            var hitbox_arr = [];
+            for(var j = 0; j <= 18; j++)
+            {
+                var hitbox = Entity.GetHitboxPosition(enemies[i], j);
+                if(typeof(hitbox) == "undefined")
+                {
+                    continue;
+                }
+                hitbox_arr.push({hb: hitbox, index: j});
+            }
+            var hitbox_arr_len = hitbox_arr.length;
+            for(var k = 0; k < hitbox_arr_len; k++)
+            {
+                var angle_to_hitbox = calculate_angle(local_eyepos, hitbox_arr[k].hb, local_viewangles); 
+                var fov = Math.hypot(angle_to_hitbox[0], angle_to_hitbox[1]);
+                if(best_fov > fov)
+                {
+                    best_fov = fov;
+                    target = enemies[i];
+                    temp_tgt_hitboxes = hitbox_arr;
+                }
+            }
+        }
+    }
+    if(target == -1 || best_fov > max_fov)
+    {
+        return {pos: [0, 0, 0], fov: -1};
+    }
+    hitboxes = temp_tgt_hitboxes;
+
+    best_fov = 999; //reset fov
+
+    var target_health = Entity.GetProp(target, "CBasePlayer", "m_iHealth"); //Used for hp override
+    var best_hitbox_pos = [0, 0, 0];
+    var legit_autowall_active = script_config.autowall_mode == 0; //if its full autowall who cars anyway
+    var normal_autowall_active = script_config.autowall_mode == 2 || script_config.autowall_active;
+    var hitboxes_visible = 0; //For legit autowall
+
+    var hitbox_arr_length = hitboxes.length;
+    var best_damage = -1;
+    for(var i = hitbox_arr_length - 1; i >= 0; i--) //better for legit awall l0l
+    {
+        var hitbox = hitboxes[i];
+        var angle_to_hitbox = calculate_angle(local_eyepos, hitbox.hb, local_viewangles); var fov = Math.hypot(angle_to_hitbox[0], angle_to_hitbox[1]);
+        if(max_fov > fov)
+        {
+            var trace = Trace.Bullet(local, target, local_eyepos, hitbox.hb);
+            var damage = trace[1];
+            var visible = trace[2];
+            
+            if((targeting_mode == 0 ? (best_fov > fov) : (damage > best_damage)))
+            {
+                if((visible || normal_autowall_active || legit_autowall_active && hitboxes_visible > 1) && (damage > min_damage || damage > target_health + hp_override_amt))
+                {
+                    best_fov = fov;
+                    best_damage = damage;
+                    best_hitbox_pos = hitbox.hb;
+                    if(targeting_mode == 1 && best_damage > (target_health + hp_override_amt * 3) || best_damage > 110 + hp_override_amt)
+                    {
+                        break;
+                    }
+                }
+            }
+        }
+        
+    }
+    return {pos: best_hitbox_pos, fov: best_fov, tgt: target}; //gamer moment
 }
 
-function fix_slowwalk()
+function smooth_out_aim(original_angle, aimangle, factor)
 {
-    UI.SetValue("Misc", "Movement", "Accurate walk", script_config.script_active && !script_config.rbot_lbot_switch_active && UI.IsHotkeyActive("Anti-Aim", "Extra", "Slow walk"));
+    var new_aimangle = mathlib.VectorDivFl(aimangle, factor);
+    var return_angle = mathlib.VectorAdd(original_angle, new_aimangle);
+    return normalize_angle(return_angle);
+}
+
+function do_rcs(aimangle, rcs_pitch, rcs_yaw) //I was really sleepy when I wrote this.
+{
+    var local_punch_angle = Entity.GetProp(local, "CBasePlayer", "m_aimPunchAngle");
+    var recoil_scale = Convar.GetFloat("weapon_recoil_scale");
+    var fixed_recoil = mathlib.VectorMulFl(local_punch_angle, recoil_scale);
+
+    fixed_recoil[0] *= rcs_pitch;
+    fixed_recoil[1] *= rcs_yaw;
+    
+    var finished_rcs = mathlib.VectorSub(aimangle, fixed_recoil);
+    
+    return normalize_angle(finished_rcs);
+}
+
+var last_legitbot_kill_time = 0.0;
+
+function do_legitbot()
+{
+    if(Globals.Curtime() > (last_legitbot_kill_time + script_config.lbot_kill_delay))
+    {
+        var flash_amt = Entity.GetProp(local, "CCSPlayer", "m_flFlashDuration");
+        var local_viewangles = Local.GetViewAngles();
+        var local_eyepos = Entity.GetEyePosition(local);
+        var aimangle = do_rcs(local_viewangles, script_config.lbot_rcs_x, script_config.lbot_rcs_y);
+        if(flash_amt != 0)
+        {
+            return;
+        }
+        var target = scan_targets(script_config.lbot_tgt_select, script_config.lbot_hp_override, script_config.lbot_mindmg, script_config.lbot_fov);
+        if(target.fov != -1 && target.fov != 999)
+        {
+            var selected_smoothing = target.fov <= script_config.lbot_mod_fov ? (script_config.lbot_mod_smooth * Math.min(Globals.Frametime() / Globals.TickInterval(), 1)) : (script_config.lbot_smooth * Math.min(Globals.Frametime() / Globals.TickInterval(), 1));
+            var angle_to_tgt = calculate_angle(local_eyepos, target.pos, aimangle);
+            aimangle = smooth_out_aim(aimangle, angle_to_tgt, selected_smoothing);
+        }
+        Local.SetViewAngles(aimangle);
+    }
 }
 
 function on_move()
@@ -1033,9 +1258,13 @@ function on_move()
     {
         setup_config_and_dyn_fov();
         handle_legitaa();
-        if(script_config.rbot_active && !script_config.autowall_active)
+        if(script_config.rbot_active && !script_config.autowall_active && script_config.autowall_mode != 2) //Yet another gamer move
         {
             handle_autowall();
+        }
+        if(script_config.lbot_active && !script_config.rbot_active)
+        {
+            do_legitbot();
         }
         handle_fakelag();
     }
@@ -1047,70 +1276,70 @@ function on_draw()
 {
     update_settings();
     handle_visibility();
-    handle_switch();
     handle_indicators();
     if(last_direction_switch + 0.3 < Globals.Curtime())
     {
         current_proper_direction = handle_edge_detection(local, 15);
         last_direction_switch = Globals.Curtime();
     }
-    fix_slowwalk();
 } //Can't be arsed setting up a FSN callback for all the misc shit and doing it in Draw doesn't seem to be a bad choice, seeing as it's called once-per-frame.
 
 //Gay killsay territory
 var normal_killsays = ["ez", "too fucking easy", "effortless", "easiest kill of my life", 
     "retard blasted", "cleans?", "nice memesense retard", "hello mind explaining what happened there", 
-    "pounce out of your window disgusting tranny, you shouldnt exist in this world", 
+    "pounce out of your window disgusting tranny, you shouldnt exist in this world",
     "lmao ur so ugly irl like bro doesnt it hurt to live like that, btw you know you can just end it all",
     "ROFL NICE *DEAD* HHHHHHHHHHHHHHHHHH", "take the cooldown and let your team surr retard",
-    "go take some estrogen tranny", "uid police here present your user identification number right now"];
+    "go take some estrogen tranny", "uid police here present your user identification number right now",
+    "tranny holzed", 
+    "better buy the superior hack!",
+    "whatcha shootin at retard",
+    "nice 0.5x0.5m room you poorfag, how the fuck did you afford an acc hhhhhh",
+    "imagine losing at video games couldn't ever be me", "nice chromosome count you sell??", "nice thirdworldspeak ROFL"
+];
     
-    var hs_killsays = ["ez", "effortless", "1", "nice antiaim, you sell?", "you pay for that?", 
+var hs_killsays = ["ez", "effortless", "1", "nice antiaim, you sell?", "you pay for that?", 
     "refund right now", "consider suicide", "bro are u clean?",
     "another retard blasted",
     "hhhhhhhhhhhhhhhhhh 1, you pay for that? refund so maybe youll afford some food for your family thirdworld monkey",
     "paster abandoned the match and received a 7 day competitive matchmaking cooldown",
     "freeqn.net/refund.php", "refund your rainbowhook right now pasteuser dog",
+    "JAJAJAJJAJA NICE RAINBOWPASTE ROFL",
     "140er????", "get good get vantap4ik",
     "1 but all you need to fix your problems is a rope and a chair you ugly shit",
     "who (kto) are you (nn4ik) wattafak mens???????", "must be an uid issue", "holy shit consider refunding your trash paste rofl",
-    "hello please refund your subpar product"];
+    "hello please refund your subpar product",
+    "stop spending your lunch money on shitpastes retard",
+    "thats going in my media compilation right there get shamed retard rofl",
+    "imagine the only thing you eat being bullets man being a thirdworlder must suck rofl", "so fucking ez", "bot_kick", "where the enemies at????"
+];
 
-    var awall_killsays = ["ez", "effortless", "sorry for awall bro", 
-    "get autoballed monkey",
-    "too ez", "legit wallbang", "my awall > your awall", "1 hhhh", 
-    "sorry i held down my awall key bro", "thats going in my media compilation right there get shamed retard rofl",
-    "imagine the only thing you eat being bullets man being a thirdworlder must suck rofl", "so fucking ez", "bot_kick", "where the enemies at????"];
 
 //I hope you haven't gotten cancer after reading those
 
 function on_player_death()
 {
+    var victim = Entity.GetEntityFromUserID(Event.GetInt("userid"));
+    var attacker = Entity.GetEntityFromUserID(Event.GetInt("attacker"));
     if(script_config.trashtalk)
     {
-        var victim = Entity.GetEntityFromUserID(Event.GetInt("userid"));
-		var attacker = Entity.GetEntityFromUserID(Event.GetInt("attacker"));
 		var headshot = Event.GetInt("headshot") == 1;
-        var autowalled = Event.GetInt("penetrated");
-        
         if(attacker == local && attacker != victim)
         {
             var normal_say = normal_killsays[Math.floor(Math.random() * normal_killsays.length)];
 			var hs_say = hs_killsays[Math.floor(Math.random() * hs_killsays.length)];
-            var awall_say = awall_killsays[Math.floor(Math.random() * awall_killsays.length)];
             
             if(headshot && Math.floor(Math.random() * 3) <= 2) //gamer style randomizer
             {
                 Cheat.ExecuteCommand("say " + hs_say);
                 return;
             }
-            if(autowalled && Math.floor(Math.random() * 3) <= 2)
-            {
-                Cheat.ExecuteCommand("say " + awall_say);
-                return;
-            }
             Cheat.ExecuteCommand("say " + normal_say);
         }
+    }
+    if(local == attacker && Entity.IsEnemy(victim))
+    {
+        last_legitbot_kill_time = Globals.Curtime();
     }
 }
 
@@ -1131,6 +1360,7 @@ function on_round_start() //Clean up our shit.
     ragebot_targets_this_round.splice(0, ragebot_targets_this_round.length);
     last_peek = 0.0;
     last_direction_switch = 0.0;
+    last_legitbot_kill_time = 0.0;
 }
 
 function on_ragebot_fire()
@@ -1180,4 +1410,3 @@ function setup_callbacks()
 }
 
 setup_callbacks();
-
