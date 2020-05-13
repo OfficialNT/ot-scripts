@@ -1,9 +1,7 @@
-//Some credits: April for the freestanding, depresso/whatever he goes by for mathlib.
-//I probably stole shit from somewhere else as well, but I don't remember from where anymore rofl
-
 var js_items = ["Misc", "JAVASCRIPT", "Script Items"];
 var rbot_weapon_types = ["GENERAL", "PISTOL", "HEAVY PISTOL", "SCOUT", "AWP", "AUTOSNIPER"];
 var reworked_lbot_guns = ["Pistol", "Heavy pistol", "Heavy", "Rifle", "SMG", "Scout", "AWP", "Autosnipers"];
+var rbot_hitboxes = ["Head", "Upper chest", "Chest", "Lower chest", "Stomach", "Pelvis", "Legs", "Feet"];
 
 var mathlib = require("mathlib.js") //damn.......
 function setup_menu()
@@ -15,6 +13,7 @@ function setup_menu()
     for(var i = 0; i < 8; i++)
     {
         var current_gun = reworked_lbot_guns[i];
+        UI.AddMultiDropdown(current_gun + " allowed rage hitboxes", rbot_hitboxes);
         UI.AddSliderInt(current_gun + " dynamic FOV base", 2500, 6000);
         UI.AddSliderFloat(current_gun + " dynamic FOV min", 0.1, 180.0);
         UI.AddSliderFloat(current_gun + " dynamic FOV max", 0.1, 180.0);
@@ -37,11 +36,10 @@ function setup_menu()
             UI.AddCheckbox(current_gun + " prefer safepoint");
         }
         UI.AddDropdown(current_gun + " w/o autowall key", ["Autowall on triggers", "No autowall", "Full autowall"]);
-        UI.AddMultiDropdown(current_gun + " autowall triggers", ["Hitbox visible", "Hurt us", "In autowall FOV", "Possible lethal damage", "We are low HP", "Ragebot shot him before"]);
+        UI.AddMultiDropdown(current_gun + " autowall triggers", ["Hitbox visible", "Hurt us", "In autowall FOV", "We are low HP", "Ragebot shot him before"]);
         UI.AddSliderInt(current_gun + " hitbox amount", 1, 10);
         UI.AddSliderFloat(current_gun + " time after hurt (s)", 0.01, 10);
         UI.AddSliderFloat(current_gun + " autowall FOV", 0.5, 10.0);
-        UI.AddSliderInt(current_gun + " health +", 0, 60);
         UI.AddSliderFloat(current_gun + " shot expire time (s)", 1, 120);
     }
     UI.AddCheckbox("Trigger fakelag on visible");
@@ -56,9 +54,7 @@ function setup_menu()
     UI.AddDropdown("Peeking mode", ["Peek with fake", "Peek with real"]);
     UI.AddMultiDropdown("Semirage assist indicators", ["Aimbot status", "Autowall", "Legit AA", "Choke", "Inaccuracy", "Aim mode", "Enemy possible real yaw side", "Watermark"]);
     
-    UI.AddSliderFloat("Indicator offset (x)", 0.55, 0.8);
-    UI.AddSliderFloat("Indicator offset (y)", 0.1, 0.9);
-    UI.SetValue(js_items, "Indicator offset (y)", 0.5);
+    UI.AddSliderFloat("Indicator offset (y)", 0.55, 0.8);
     UI.AddColorPicker("Side text color");
 
     UI.AddColorPicker("Watermark accent color");
@@ -76,11 +72,14 @@ var script_config = {
 rbot_active: 0,
 lbot_active: 0,
 script_active: 0,
+
+rbot_allowed_hitboxes: -1,
 rbot_fov_min: -1,
 rbot_fov_max: -1,
 rbot_fov_mod: -1,
 rbot_fov_base_distance: -1,
 rbot_fov_awall: -1,
+
 rbot_optional_mindmg: -1,
 rbot_optional_hc: -1,
 rbot_optional_baim: 0,
@@ -121,7 +120,6 @@ gay_fakelag_invis_choke: -1,
 
 indicator_picks: -1,
 indicator_offset: -1,
-indicator_offset_2: -1,
 
 indicator_enemy_side_col: [0, 0, 0, 255],
 indicator_watermark_accent_col: [0, 0, 0, 255],
@@ -246,8 +244,7 @@ function update_settings()
     script_config.gay_fakelag_invis_choke = UI.GetValue(js_items, "Normal choke");
 
     script_config.indicator_picks = UI.GetValue(js_items, "Semirage assist indicators");
-    script_config.indicator_offset = UI.GetValue(js_items, "Indicator offset (x)");
-    script_config.indicator_offset_2 = UI.GetValue(js_items, "Indicator offset (y)");
+    script_config.indicator_offset = UI.GetValue(js_items, "Indicator offset (y)");
     script_config.indicator_enemy_side_col = UI.GetColor(js_items, "Side text color");
     script_config.indicator_watermark_accent_col = UI.GetColor(js_items, "Watermark accent color");
 
@@ -270,9 +267,11 @@ function update_settings()
     script_config.legit_autowall_modifiers = UI.GetValue(js_items, weapon_name + " autowall triggers");
     script_config.legit_autowall_hitbox_amt = UI.GetValue(js_items, weapon_name + " hitbox amount");
     script_config.legit_autowall_hurt_time = UI.GetValue(js_items, weapon_name + " time after hurt (s)");
-    script_config.legit_autowall_lethal_override = UI.GetValue(js_items, weapon_name + " health +");
     script_config.legit_autowall_ragebot_decay_time = UI.GetValue(js_items, weapon_name + " shot expire time (s)");
     script_config.rbot_fov_awall = UI.GetValue(js_items, weapon_name + " autowall FOV");
+
+    script_config.rbot_allowed_hitboxes = UI.GetValue(js_items, weapon_name + " allowed rage hitboxes");
+
     script_config.rbot_fov_min = UI.GetValue(js_items, weapon_name + " dynamic FOV min");
     script_config.rbot_fov_max = UI.GetValue(js_items, weapon_name + " dynamic FOV max");
     script_config.rbot_fov_mod = UI.GetValue(js_items, weapon_name + " dynamic FOV modifier");
@@ -330,7 +329,6 @@ function handle_visibility()
         UI.SetEnabled(js_items, "Peeking mode", script_config.script_active && script_config.legitaa_active && script_config.legitaa_edge_active);
         UI.SetEnabled(js_items, "Semirage assist indicators", script_config.script_active);
         
-        UI.SetEnabled(js_items, "Indicator offset (x)", script_config.script_active);
         UI.SetEnabled(js_items, "Indicator offset (y)", script_config.script_active);
 
         UI.SetEnabled(js_items, "Side text color", script_config.script_active && indicator_picks & (1 << 6));
@@ -353,6 +351,8 @@ function handle_visibility()
         var weapon_name = reworked_lbot_guns[i];
         if(last_configured_weapon != cur_selected_gun || script_config.script_active != last_script_enabled_state)
         {
+            UI.SetEnabled(js_items, weapon_name + " allowed rage hitboxes", script_config.script_active && cur_selected_gun == i);
+
             UI.SetEnabled(js_items, weapon_name + " dynamic FOV base", script_config.script_active && cur_selected_gun == i);
             UI.SetEnabled(js_items, weapon_name + " dynamic FOV min", script_config.script_active && cur_selected_gun == i);
             UI.SetEnabled(js_items, weapon_name + " dynamic FOV max", script_config.script_active && cur_selected_gun == i);
@@ -386,8 +386,7 @@ function handle_visibility()
             UI.SetEnabled(js_items, weapon_name + " hitbox amount", script_config.script_active && cur_selected_gun == i && awall_mode == 0 && awall_triggers & (1 << 0));
             UI.SetEnabled(js_items, weapon_name + " time after hurt (s)", script_config.script_active && cur_selected_gun == i && awall_mode == 0 && awall_triggers & (1 << 1));
             UI.SetEnabled(js_items, weapon_name + " autowall FOV", script_config.script_active && cur_selected_gun == i && awall_mode == 0 && awall_triggers & (1 << 2));
-            UI.SetEnabled(js_items, weapon_name + " health +", script_config.script_active && cur_selected_gun == i && awall_mode == 0 && awall_triggers & (1 << 3));
-            UI.SetEnabled(js_items, weapon_name + " shot expire time (s)", script_config.script_active && cur_selected_gun == i && awall_mode == 0 && awall_triggers & (1 << 5));
+            UI.SetEnabled(js_items, weapon_name + " shot expire time (s)", script_config.script_active && cur_selected_gun == i && awall_mode == 0 && awall_triggers & (1 << 4));
         }
         last_awall_state_for_weapons[i] = awall_mode;
         last_awall_triggers_for_weapons[i] = awall_triggers;
@@ -514,7 +513,39 @@ function get_hitbox_name(hitbox) //Useless, but I love the bloody shot logs
     return hitbox_name;
 }
 
-
+function get_ragebot_hitgroup_for_hitbox(hitbox)
+{
+    switch(hitbox)
+    {
+        case 0:
+        case 1:
+            return 0;
+        case 6:
+        case 15:
+        case 16:
+        case 17:
+        case 18:
+            return 1;
+        case 5:
+        case 13:
+        case 14:
+            return 2;
+        case 3:
+            return 3;
+        case 4:
+            return 4;
+        case 2:
+            return 5;
+        case 7:
+        case 8:
+        case 9:
+        case 10:
+            return 6;
+        case 11:
+        case 12:
+            return 7;
+    }
+}
 
 //Since the one in mathlib looks to be kinda dumb and since we're cool people I'll just use my own (well ""my own"")
 /**
@@ -602,16 +633,19 @@ var ragebot_targets_this_round = [];
 function handle_autowall()
 {
     var is_legit_autowall_active = script_config.autowall_mode == 0;
+
     var visible_hitbox_check = is_legit_autowall_active && script_config.legit_autowall_modifiers & (1 << 0);
     var visible_hitbox_amt = script_config.legit_autowall_hitbox_amt;
+
     var hurt_check = is_legit_autowall_active && script_config.legit_autowall_modifiers & (1 << 1);
     var hurt_length = script_config.legit_autowall_hurt_time;
+
     var fov_check = is_legit_autowall_active && script_config.legit_autowall_modifiers & (1 << 2);
     var autowall_fov = script_config.rbot_fov_awall;
-    var lethal_check = is_legit_autowall_active && script_config.legit_autowall_modifiers & (1 << 3);
-    var lethal_override_hp_amt = script_config.legit_autowall_lethal_override;
-    var local_lowhp_check = is_legit_autowall_active && script_config.legit_autowall_modifiers & (1 << 4);
-    var rbot_target_check = is_legit_autowall_active && script_config.legit_autowall_modifiers & (1 << 5);
+
+    var local_lowhp_check = is_legit_autowall_active && script_config.legit_autowall_modifiers & (1 << 3);
+
+    var rbot_target_check = is_legit_autowall_active && script_config.legit_autowall_modifiers & (1 << 4);
     var rbot_target_decay_time = script_config.legit_autowall_ragebot_decay_time;
 
     if(local_lowhp_check)
@@ -628,86 +662,144 @@ function handle_autowall()
     {
         return; //No point handling autowall if the current weapon is invalid.
     }
+    var allowed_rbot_hitboxes = script_config.rbot_allowed_hitboxes;
+
     var current_rbot_category = convert_weapon_index_into_rbot_idx(current_weapon);
+
+    var is_hitbox_potentially_unsafe = function(hitbox)
+    {
+        return (hitbox <= 1 || hitbox >= 6);
+    }
+
+    if(current_rbot_category == 4) //hehehe
+    {
+        for(var i = 0; i <= 12; i++)
+        {
+            if(is_hitbox_potentially_unsafe(i))
+            {
+                Ragebot.ForceHitboxSafety(i);
+            }
+        }
+    }
+
     var current_rbot_fov = UI.GetValue("Rage", rbot_weapon_types[current_rbot_category], "Targeting", "FOV"); //Quick optimization by ignoring every target outside FOV without tracing to them.
+    
+    var valid_enemies = []; //a slightly better implementation, probs
+
+    var enemies = Entity.GetEnemies();
+    var enemy_arr_length = enemies.length;
+
     var local_eyepos = Entity.GetEyePosition(local);
     var local_viewangles = Local.GetViewAngles();
-    var enemies = Entity.GetEnemies();
-    var enemy_arr_length = enemies.length; //Apparently doing this is slightly faster than getting the array length every iteration
-    for(var i = 0; i < enemy_arr_length; i++)
+
+    var scan_potential_ragebot_target = function(target)
     {
-        if(Entity.IsValid(enemies[i]) && Entity.IsAlive(enemies[i]) && !Entity.IsDormant(enemies[i]))
+        var visible_hitbox_arr = []; //turkish guy don't accuse me of pasting, i dont even have your bloody code
+        var returned_object = {successful: false, proper_hitboxes: 0};
+        for(var i = 0; i <= 18; i++)
         {
-            if(hurt_check)
+            var ragebot_corresponding_hitgroup = get_ragebot_hitgroup_for_hitbox(i);
+            if((allowed_rbot_hitboxes & (1 << ragebot_corresponding_hitgroup)) || visible_hitbox_check)
             {
-                if(players_who_hurt_us.some(function(value) { return value.cisgendered_pig == enemies[i] && value.time_he_hurt_us + hurt_length > Globals.Curtime(); }))
-                {
-                    continue;
-                }
-            }
-            if(rbot_target_check)
-            {
-                if(ragebot_targets_this_round.some(function(value) { return value.aimbot_target == enemies[i] && value.shot_time + rbot_target_decay_time > Globals.Curtime(); }))
-                {
-                    continue;
-                }
-            }
-            var head_hitbox = Entity.GetHitboxPosition(enemies[i], 0); //Quick check to see if entity's head hitbox is inside FOV
-            if(typeof(head_hitbox) != "undefined")
-            {
-                var angle_to_head = calculate_angle(local_eyepos, head_hitbox, local_viewangles); var fov = Math.hypot(angle_to_head[0], angle_to_head[1]);
-                if(fov > current_rbot_fov)
-                {
-                    Ragebot.IgnoreTarget(enemies[i]);
-                    continue;
-                }
-            }
-            var is_inside_autowall_fov = false;
-            var can_be_lethal = false;
-            var entity_hp = Entity.GetProp(enemies[i], "CBasePlayer", "m_iHealth");
-            var visible_hitboxes = 0;
-            for(var j = 18; j >= 0; j--) //Might be (within fractions of a bloody millisecond) faster for visiblecheck this way
-            {
-                var hitbox = Entity.GetHitboxPosition(enemies[i], j);
+                var hitbox = Entity.GetHitboxPosition(target, i);
                 if(typeof(hitbox) != "undefined")
                 {
                     if(fov_check)
                     {
-                        var angle_to_hitbox = calculate_angle(local_eyepos, hitbox, local_viewangles); var fov_to_hitbox = Math.hypot(angle_to_hitbox[0], angle_to_hitbox[1]);
-                        if(autowall_fov > fov_to_hitbox)
+                        var angle_to_hitbox = calculate_angle(local_eyepos, hitbox, local_viewangles);
+                        var fov = Math.hypot(angle_to_hitbox[0], angle_to_hitbox[1]);
+                        if(autowall_fov > fov)
                         {
-                            is_inside_autowall_fov = true;
+                            returned_object.successful = true;
                             break;
                         }
                     }
-                    var trace = Trace.Bullet(local, enemies[i], local_eyepos, hitbox);
-                    var damage = trace[1];
-                    if(lethal_check && (damage > entity_hp + lethal_override_hp_amt))
+                    var trace = Trace.Line(local, local_eyepos, hitbox);
+                    if(trace[0] == target || trace[1] > 0.9)
                     {
-                        can_be_lethal = true;
+                        visible_hitbox_arr.push(i);
+                        returned_object.proper_hitboxes |= (1 << ragebot_corresponding_hitgroup);
+                    }
+                    if(visible_hitbox_check && visible_hitbox_amt <= visible_hitbox_arr.length)
+                    {
+                        returned_object.successful = true;
                         break;
-                    }
-                    var visible = trace[2];
-                    if(visible)
-                    {
-                        visible_hitboxes++;
-                        if(visible_hitbox_check && visible_hitboxes >= visible_hitbox_amt)
-                        {
-                            break;
-                        }
                     }
                 }
             }
-            if(is_inside_autowall_fov || can_be_lethal || (visible_hitbox_check && visible_hitboxes >= visible_hitbox_amt))
+        }
+        if(!returned_object.successful)
+        {
+            if(visible_hitbox_arr.length > 0)
             {
-                continue;
+                returned_object.successful = true;
             }
-            if(visible_hitboxes < 11)
+        }
+        return returned_object;
+    }
+
+    for(var i = 0; i < enemy_arr_length; i++)
+    {
+        if(Entity.IsValid(enemies[i]) && Entity.IsAlive(enemies[i]) && !Entity.IsDormant(enemies[i]))
+        {
+            var head_hitbox = Entity.GetHitboxPosition(enemies[i], 0);
+            if(typeof(head_hitbox) != "undefined")
             {
-                Ragebot.IgnoreTarget(enemies[i]);
+                var angle_to_head = calculate_angle(local_eyepos, head_hitbox, local_viewangles);
+                var fov_to_head = Math.hypot(angle_to_head[0], angle_to_head[1]);
+                if(current_rbot_fov > fov_to_head)
+                {
+                    valid_enemies.push({entindex: enemies[i], head_fov: fov_to_head});
+                }
+                else
+                {
+                    Ragebot.IgnoreTarget(enemies[i]);
+                }
             }
         }
     }
+
+    var valid_enemies_len = valid_enemies.length;
+
+    if(valid_enemies_len == 0)
+    {
+        return; //We won't be shooting anybody.
+    }
+
+    valid_enemies.sort(function(entity_a, entity_b) { return entity_a.head_fov - entity_b.head_fov }); //We want the dude who's closest to us as the first one.
+
+    var scanned_object_success = {successful: false, proper_hitboxes: 0};
+
+    for(var i = 0; i < valid_enemies_len; i++)
+    {
+        var enemy = valid_enemies[i];
+        if(hurt_check)
+        {
+            if(players_who_hurt_us.some(function(value) { return value.cisgendered_pig == enemy.entindex && value.time_he_hurt_us + hurt_length > Globals.Curtime(); }))
+            {
+                continue;
+            }
+        }
+        if(rbot_target_check)
+        {
+            if(ragebot_targets_this_round.some(function(value) { return value.aimbot_target == enemy.entindex && value.shot_time + rbot_target_decay_time > Globals.Curtime(); }))
+            {
+                continue;
+            }
+        }
+        var returned_object = scan_potential_ragebot_target(enemy.entindex);
+        if(returned_object.successful)
+        {
+            scanned_object_success = returned_object;
+            Ragebot.ForceTarget(enemy.entindex);
+            break;
+        }
+        else
+        {
+            Ragebot.IgnoreTarget(enemy.entindex);
+        }
+    }
+    UI.SetValue("Rage", rbot_weapon_types[current_rbot_category], "Targeting", "Hitboxes", is_legit_autowall_active ? allowed_rbot_hitboxes : scanned_object_success.proper_hitboxes);
 }
 
 
@@ -807,10 +899,6 @@ function handle_legitaa() //there are quite a bit of (probably useless) tricks t
         AntiAim.SetOverride(1);
         var should_use_juke = lby_mode == 1 && script_config.legitaa_juke_active; //If we're using "safe" LBY, we can't exactly trick dumb resolvers into trying to resolve us as if we were using opposite.
         var real_yaw_offset = 60 * current_inversion * (should_use_juke ? -1 : 1);
-        if(Globals.Tickcount() % 9 == 0 && lby_mode != 0)
-        {
-            real_yaw_offset *= 0.7;
-        }
         var lower_body_yaw_offset = 0;
         if(lby_mode == 1)
         {
@@ -847,10 +935,6 @@ function handle_legitaa() //there are quite a bit of (probably useless) tricks t
             {
                 lower_body_yaw_offset = Math.random() < 0.5 ? 0 : 180;
             }
-        }
-        if(in_slowwalk)
-        {
-            real_yaw_offset *= random_float(0.15, 1); //hf resolving this :)
         }
         
         AntiAim.SetRealOffset(real_yaw_offset);
@@ -931,7 +1015,7 @@ function handle_indicators()
     if(script_config.script_active && script_config.indicator_picks)
     {
         var screensize = Render.GetScreenSize();
-        var screen_center_x = screensize[0] * script_config.indicator_offset_2; //not necessarily center, but whatever, its centered by default.
+        var screen_center_x = screensize[0] * 0.5;
         var font = Render.AddFont("Verdana", 10, 800);
         var watermark_font = Render.AddFont("Verdana", 8, 250);
         if(Entity.IsValid(local) && Entity.IsAlive(local))
@@ -1287,15 +1371,14 @@ function on_draw()
 //Gay killsay territory
 var normal_killsays = ["ez", "too fucking easy", "effortless", "easiest kill of my life", 
     "retard blasted", "cleans?", "nice memesense retard", "hello mind explaining what happened there", 
-    "pounce out of your window disgusting tranny, you shouldnt exist in this world",
+    "pounce out of your window disgusting tranny, you shouldnt exist in this world", 
     "lmao ur so ugly irl like bro doesnt it hurt to live like that, btw you know you can just end it all",
     "ROFL NICE *DEAD* HHHHHHHHHHHHHHHHHH", "take the cooldown and let your team surr retard",
     "go take some estrogen tranny", "uid police here present your user identification number right now",
     "tranny holzed", 
     "better buy the superior hack!",
-    "whatcha shootin at retard",
-    "nice 0.5x0.5m room you poorfag, how the fuck did you afford an acc hhhhhh",
-    "imagine losing at video games couldn't ever be me", "nice chromosome count you sell??", "nice thirdworldspeak ROFL"
+    "whatcha shootin at retard", "nice 0.5x0.5m room you poorfag, how the fuck did you afford an acc hhhhhh", 
+    "imagine losing at video games couldn't ever be me", "nice chromosome count you sell??", "nice thirdworldspeak ROFL", "nice boberhook retard"
 ];
     
 var hs_killsays = ["ez", "effortless", "1", "nice antiaim, you sell?", "you pay for that?", 
@@ -1304,6 +1387,7 @@ var hs_killsays = ["ez", "effortless", "1", "nice antiaim, you sell?", "you pay 
     "hhhhhhhhhhhhhhhhhh 1, you pay for that? refund so maybe youll afford some food for your family thirdworld monkey",
     "paster abandoned the match and received a 7 day competitive matchmaking cooldown",
     "freeqn.net/refund.php", "refund your rainbowhook right now pasteuser dog",
+    "i dont think i gave thirdworlders a privilege to speak",
     "JAJAJAJJAJA NICE RAINBOWPASTE ROFL",
     "140er????", "get good get vantap4ik",
     "1 but all you need to fix your problems is a rope and a chair you ugly shit",
@@ -1311,7 +1395,7 @@ var hs_killsays = ["ez", "effortless", "1", "nice antiaim, you sell?", "you pay 
     "hello please refund your subpar product",
     "stop spending your lunch money on shitpastes retard",
     "thats going in my media compilation right there get shamed retard rofl",
-    "imagine the only thing you eat being bullets man being a thirdworlder must suck rofl", "so fucking ez", "bot_kick", "where the enemies at????"
+    "imagine the only thing you eat being bullets man being a thirdworlder must suck rofl", "so fucking ez", "bot_kick", "where the enemies at????",
 ];
 
 
