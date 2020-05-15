@@ -67,7 +67,7 @@ function on_player_death()
             var normal_say = normal_killsays[Math.floor(Math.random() * normal_killsays.length)];
 			var hs_say = hs_killsays[Math.floor(Math.random() * hs_killsays.length)];
             
-            if(headshot && Math.floor(Math.random() * 2) <= 1) //gamer style randomizer
+            if(headshot && Math.floor(Math.random() * 3) <= 1) //gamer style randomizer
             {
                 Cheat.ExecuteCommand("say " + hs_say);
                 return;
