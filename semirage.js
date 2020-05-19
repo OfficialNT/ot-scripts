@@ -595,7 +595,6 @@ function setup_config_and_dyn_fov()
 
     var enemies = Entity.GetEnemies();
     var enemy_arr_length = enemies.length;
-
     var distance = 10000;
     for(var i = 0; i < enemy_arr_length; i++)
     {
@@ -666,6 +665,9 @@ function handle_autowall()
 
     var is_full_autowall_active =  script_config.autowall_active || script_config.autowall_mode == 2;
 
+    var enemies = Entity.GetEnemies();
+    var enemy_arr_length = enemies.length;
+
     var current_weapon = get_weapon_for_config();
     if(current_weapon == -1)
     {
@@ -673,15 +675,15 @@ function handle_autowall()
     }
     var allowed_rbot_hitboxes = script_config.rbot_allowed_hitboxes;
     var current_rbot_category = convert_weapon_index_into_rbot_idx(current_weapon);
-
+    
     if(is_full_autowall_active)
     {
         UI.SetValue("Rage", rbot_weapon_types[current_rbot_category], "Targeting", "Hitboxes", allowed_rbot_hitboxes);
         return;
     }
+
     
     var visible_hitbox_check = is_legit_autowall_active && script_config.legit_autowall_modifiers & (1 << 0);
-    var visible_hitbox_amt = script_config.legit_autowall_hitbox_amt;
 
     var hurt_check = is_legit_autowall_active && script_config.legit_autowall_modifiers & (1 << 1);
     var hurt_length = script_config.legit_autowall_hurt_time;
@@ -725,9 +727,6 @@ function handle_autowall()
     
     var valid_enemies = []; //a slightly better implementation, probs
 
-    var enemies = Entity.GetEnemies();
-    var enemy_arr_length = enemies.length;
-
     var local_eyepos = Entity.GetEyePosition(local);
     var local_viewangles = Local.GetViewAngles();
 
@@ -764,6 +763,11 @@ function handle_autowall()
                     {
                         visible_hitbox_amount++
                         returned_object.proper_hitboxes |= (1 << ragebot_corresponding_hitgroup);
+                        if(visible_hitbox_check)
+                        {
+                            returned_object.successful = true;
+                            break; //If we have that check, it will add all the allowed hitboxes to the ragebot's scanlist, so we can just break here.
+                        }
                     }
                 }
             }
@@ -780,23 +784,18 @@ function handle_autowall()
 
     for(var i = 0; i < enemy_arr_length; i++)
     {
-        if(Entity.IsValid(enemies[i]) && Entity.IsAlive(enemies[i]) && !Entity.IsDormant(enemies[i]))
+        var head_hitbox = Entity.GetHitboxPosition(enemies[i], 0);
+        if(typeof(head_hitbox != "undefined"))
         {
-            var head_hitbox = Entity.GetHitboxPosition(enemies[i], 0);
-            if(typeof(head_hitbox) != "undefined")
+            var angle_to_head = calculate_angle(local_eyepos, head_hitbox, local_viewangles);
+            var fov_to_head = Math.hypot(angle_to_head[0], angle_to_head[1]);
+            if(current_rbot_fov > fov_to_head)
             {
-                var angle_to_head = calculate_angle(local_eyepos, head_hitbox, local_viewangles);
-                var fov_to_head = Math.hypot(angle_to_head[0], angle_to_head[1]);
-                if(current_rbot_fov > fov_to_head)
-                {
-                    valid_enemies.push({entindex: enemies[i], head_fov: fov_to_head});
-                }
-                else
-                {
-                    Ragebot.IgnoreTarget(enemies[i]);
-                }
+                valid_enemies.push({entindex: enemies[i], head_fov: fov_to_head});
+                continue;
             }
         }
+        Ragebot.IgnoreTarget(enemies[i]);
     }
 
     var valid_enemies_len = valid_enemies.length;
@@ -829,7 +828,7 @@ function handle_autowall()
         }
         if(peek_check)
         {
-            if(vector_length(local_velocity) > 70 && are_we_peeking_particular_enemy(extrapolated_local_eyepos, enemy))
+            if(vector_length(local_velocity) > 70 && are_we_peeking_particular_enemy(extrapolated_local_eyepos, enemy.entindex))
             {
                 continue;
             }
@@ -846,7 +845,10 @@ function handle_autowall()
             Ragebot.IgnoreTarget(enemy.entindex);
         }
     }
-    UI.SetValue("Rage", rbot_weapon_types[current_rbot_category], "Targeting", "Hitboxes", (is_legit_autowall_active && script_config.legit_autowall_modifiers != 0) ? allowed_rbot_hitboxes : scanned_object_success.proper_hitboxes);
+    if(scanned_object_success.successful)
+    {
+        UI.SetValue("Rage", rbot_weapon_types[current_rbot_category], "Targeting", "Hitboxes", (is_legit_autowall_active && script_config.legit_autowall_modifiers != 0) ? allowed_rbot_hitboxes : scanned_object_success.proper_hitboxes);
+    }
 }
 
 var peek_time = 0.0;
@@ -1046,7 +1048,7 @@ function handle_indicators()
                 var text = "AIM"
                 var weapon_type = get_weapon_for_config();
                 var converted_ragebot_type = convert_weapon_index_into_rbot_idx(weapon_type);
-                if(converted_ragebot_type != -1 && script_config.rbot_active)
+                if(converted_ragebot_type != -1)
                 {
                     var weapon_cur_fov = UI.GetValue("Rage", rbot_weapon_types[converted_ragebot_type], "Targeting", "FOV");
                     var string = " FOV: " + weapon_cur_fov;
@@ -1302,6 +1304,10 @@ function scan_targets(targeting_mode, min_damage, max_fov) //Kinda sad I can't r
                 best_damage = damage;
                 best_fov = fov;
                 best_hitbox_pos = hitbox.hb;
+                if(best_damage > target_health + (proper_min_damage * 0.5))
+                {
+                    break;
+                }
             }
         }
     }
@@ -1367,6 +1373,12 @@ function on_move()
     local = Entity.GetLocalPlayer();
     if(script_config.script_active)
     {
+        var current_weapon_category = get_weapon_for_config();
+        if(current_weapon_category != -1)
+        {
+            var current_rage_weapon_category = convert_weapon_index_into_rbot_idx(current_weapon_category);
+            UI.SetValue("Rage", rbot_weapon_types[current_rage_weapon_category], "Targeting", "Hitboxes", 0); //Just in case. (this might have been the bug that caused it to autowall lol) (doing it in createmove callback because why not, also it seems to be buggy otherwise)
+        }
         setup_config_and_dyn_fov();
         handle_legitaa();
         if(script_config.rbot_active) //Yet another gamer move
@@ -1404,7 +1416,10 @@ var normal_killsays = ["ez", "too fucking easy", "effortless", "easiest kill of 
     "go take some estrogen tranny", "uid police here present your user identification number right now",
     "tranny holzed", 
     "better buy the superior hack!",
-    "nice 0.5x0.5m room you poorfag, how the fuck did you afford an acc hhhhhh", "imagine losing at video games couldn't ever be me", "але а противники то где???", "nice chromosome count you sell??", "nice thirdworldspeak ROFL"
+    "whatcha shootin at retard",
+    "nice 0.5x0.5m room you poorfag, how the fuck did you afford an acc hhhhhh",
+    "imagine losing at video games couldn't ever be me", "nice chromosome count you sell??", "nice thirdworldspeak ROFL",
+    "bruh thats just embarassing"
 ];
     
 var hs_killsays = ["ez", "effortless", "1", "nice antiaim, you sell?", "you pay for that?", 
@@ -1413,6 +1428,7 @@ var hs_killsays = ["ez", "effortless", "1", "nice antiaim, you sell?", "you pay 
     "hhhhhhhhhhhhhhhhhh 1, you pay for that? refund so maybe youll afford some food for your family thirdworld monkey",
     "paster abandoned the match and received a 7 day competitive matchmaking cooldown",
     "freeqn.net/refund.php", "refund your rainbowhook right now pasteuser dog",
+    "i dont think thirdworlders got the right to communicate",
     "JAJAJAJJAJA NICE RAINBOWPASTE ROFL",
     "140er????", "get good get vantap4ik",
     "1 but all you need to fix your problems is a rope and a chair you ugly shit",
@@ -1420,7 +1436,7 @@ var hs_killsays = ["ez", "effortless", "1", "nice antiaim, you sell?", "you pay 
     "hello please refund your subpar product",
     "stop spending your lunch money on shitpastes retard",
     "thats going in my media compilation right there get shamed retard rofl",
-    "imagine the only thing you eat being bullets man being a thirdworlder must suck rofl", "so fucking ez", "bot_kick", "where the enemies at????",
+    "imagine the only thing you eat being bullets man being a thirdworlder must suck rofl", "so fucking ez", "bot_kick", "where the enemies at????"
 ];
 
 
