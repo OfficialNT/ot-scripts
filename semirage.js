@@ -44,7 +44,7 @@ function setup_menu()
     UI.AddHotkey("Legit AA juke (only in rage)");
     UI.AddCheckbox("Legit AA edge detection");
     UI.AddDropdown("Peeking mode", ["Peek with fake", "Peek with real"]);
-    UI.AddMultiDropdown("Semirage assist indicators", ["Aimbot status", "Autowall", "Legit AA", "Choke", "Inaccuracy", "Aim mode", "Enemy possible real yaw side", "Watermark"]);
+    UI.AddMultiDropdown("Semirage assist indicators", ["Aimbot status", "Autowall", "Legit AA", "Choke", "Aim mode", "Enemy possible real yaw side", "Watermark", "MM Info"]);
     
     UI.AddSliderFloat("Indicator offset (y)", 0.55, 0.8);
     UI.AddColorPicker("Side text color");
@@ -669,8 +669,12 @@ function handle_autowall()
     var enemy_arr_length = enemies.length;
 
     var current_weapon = get_weapon_for_config();
-    if(current_weapon == -1)
+    if(current_weapon == -1) //Do not ask, sometimes it may get buggy for some reason, this is what I think is the issue
     {
+        for(var i = 0; i < enemy_arr_length; i++)
+        {
+            Ragebot.IgnoreTarget(enemies[i]);
+        }
         return; //No point handling autowall if the current weapon is invalid.
     }
     var allowed_rbot_hitboxes = script_config.rbot_allowed_hitboxes;
@@ -740,7 +744,7 @@ function handle_autowall()
     {
         var visible_hitbox_amount = 0; //turkish guy don't accuse me of pasting, i dont even have your bloody code
         var returned_object = {successful: false, proper_hitboxes: 0};
-        for(var i = 0; i <= 18; i++)
+        for(var i = 10; i >= 0; i--)
         {
             var ragebot_corresponding_hitgroup = get_ragebot_hitgroup_for_hitbox(i);
             if((allowed_rbot_hitboxes & (1 << ragebot_corresponding_hitgroup)) || visible_hitbox_check)
@@ -758,8 +762,8 @@ function handle_autowall()
                             break;
                         }
                     }
-                    var trace = Trace.Line(local, local_eyepos, hitbox);
-                    if(trace[0] == target || trace[1] > 0.9)
+                    var trace = Trace.Bullet(local, target, local_eyepos, hitbox);
+                    if(trace[2])
                     {
                         visible_hitbox_amount++
                         returned_object.proper_hitboxes |= (1 << ragebot_corresponding_hitgroup);
@@ -808,7 +812,6 @@ function handle_autowall()
     valid_enemies.sort(function(entity_a, entity_b) { return entity_a.head_fov - entity_b.head_fov }); //We want the dude who's closest to us as the first one.
 
     var scanned_object_success = {successful: false, proper_hitboxes: 0};
-
     for(var i = 0; i < valid_enemies_len; i++)
     {
         var enemy = valid_enemies[i];
@@ -922,20 +925,20 @@ function handle_legitaa() //there are quite a bit of (probably useless) tricks t
         var should_use_juke = lby_mode == 1 && script_config.legitaa_juke_active; //If we're using "safe" LBY, we can't exactly trick dumb resolvers into trying to resolve us as if we were using opposite.
         var real_yaw_offset = 60 * current_inversion * (should_use_juke ? -1 : 1);
         var lower_body_yaw_offset = 0;
+        var real_yaw = Local.GetRealYaw();
+        var fake_yaw = Local.GetFakeYaw();
         if(lby_mode == 1)
         {
-            lower_body_yaw_offset = (60 * -current_inversion) - ((Globals.Curtime() * 120 / random_float(0.5, 10) % 121 / random_float(0.2, 3)) * current_inversion);
-            //just for the keks, powerful desink men)))
-            if(Globals.Tickcount() % 7 == 0)
+            var fake_delta = Math.abs(angle_diff(fake_yaw, real_yaw));
+            lower_body_yaw_offset = (60 * -current_inversion);
+            if(fake_delta > 105)
             {
-                lower_body_yaw_offset *= -1;
+                lower_body_yaw_offset = 180; //whats the point of fancy shit, keeping lby delta at 180 is probably the most efficient move
             }
         }
         else if(lby_mode == 2)
         {
             var local_eye_yaw_netvar = Entity.GetProp(local, "CCSPlayer", "m_angEyeAngles")[1];
-            var real_yaw = Local.GetRealYaw();
-            var fake_yaw = Local.GetFakeYaw();
             
             var local_eye_yaw_real_delta = angle_diff(local_eye_yaw_netvar, real_yaw);
             var local_eye_yaw_fake_delta = angle_diff(local_eye_yaw_netvar, fake_yaw);
@@ -1026,9 +1029,22 @@ function handle_edge_detection(entity, step) //I recommend the step being divisi
     return 0;
 }
 
+var mm_ranks = ["None", "S1", "S2", "S3", "S4", "SE", "SEM",
+                "GN1", "GN2", "GN3", "GNM", 
+                "MG1", "MG2", "MGE", "DMG",
+                "LE", "LEM", "Supreme", "Global"];
+
 function aa_shit_color(abs_yaw, desired_alpha) //dunno why I have it in a separate function, stole from april cause cba 
 {
     return [190 - (abs_yaw * 75 / 40), 40 + (abs_yaw * 146 / 60), 10, desired_alpha];
+}
+
+function render_outlined_indicator(x, y, text, color)
+{
+    var font = Render.AddFont("Verdana", 10, 800);
+    var additional_font = Render.AddFont("Verdana", 10, 1600);
+    Render.StringCustom(x - 1, y - 1, 1, text, [0, 0, 0, 255], additional_font);
+    Render.StringCustom(x, y, 1, text, color, font);
 }
 
 function handle_indicators()
@@ -1037,158 +1053,176 @@ function handle_indicators()
     {
         var screensize = Render.GetScreenSize();
         var screen_center_x = screensize[0] * 0.5;
-        var font = Render.AddFont("Verdana", 10, 800);
         var watermark_font = Render.AddFont("Verdana", 8, 250);
-        if(Entity.IsValid(local) && Entity.IsAlive(local))
+        if(Entity.IsValid(local))
         {
             var base_yaw = screensize[1] * script_config.indicator_offset; //not actually yaw l0l
-            if(script_config.indicator_picks & (1 << 0))
+            if(Entity.IsAlive(local))
             {
-                var is_aimbot_active = script_config.rbot_active ? true : script_config.lbot_active;
-                var text = "AIM"
-                var weapon_type = get_weapon_for_config();
-                var converted_ragebot_type = convert_weapon_index_into_rbot_idx(weapon_type);
-                if(converted_ragebot_type != -1)
+                if(script_config.indicator_picks & (1 << 0))
                 {
-                    var weapon_cur_fov = UI.GetValue("Rage", rbot_weapon_types[converted_ragebot_type], "Targeting", "FOV");
-                    var string = " FOV: " + weapon_cur_fov;
-                    text += string;
-                }
-                Render.StringCustom(screen_center_x, base_yaw, 1, text, (is_aimbot_active ? [77.5, 186, 10, 200] : [255, 25, 30, 200]), font);
-                base_yaw += 15;
-                if(converted_ragebot_type != -1 && script_config.rbot_active)
-                {
-                    var are_we_preferring_safety = UI.GetValue("Rage", rbot_weapon_types[converted_ragebot_type], "Accuracy", "Prefer safe point");
-                    var safety_forced = UI.IsHotkeyActive("Rage", "GENERAL", "General", "Force safe point");
-                    
-                    if(are_we_preferring_safety || safety_forced)
+                    var is_aimbot_active = script_config.rbot_active ? true : script_config.lbot_active;
+                    var text = "AIM"
+                    var weapon_type = get_weapon_for_config();
+                    var converted_ragebot_type = convert_weapon_index_into_rbot_idx(weapon_type);
+                    if(converted_ragebot_type != -1)
                     {
-                        var color = safety_forced ? [77.5, 186, 10, 200] : [190, 170, 18, 200];
-                        Render.StringCustom(screen_center_x, base_yaw, 1, "SAFE", color, font);
-                        base_yaw += 15;
+                        var weapon_cur_fov = UI.GetValue("Rage", rbot_weapon_types[converted_ragebot_type], "Targeting", "FOV");
+                        var string = " FOV: " + weapon_cur_fov;
+                        text += string;
                     }
-                    
-                    var are_we_preferring_bodyaim = UI.GetValue("Rage", rbot_weapon_types[converted_ragebot_type], "Accuracy", "Prefer body aim");
-                    var bodyaim_forced = UI.IsHotkeyActive("Rage", "GENERAL", "General", "Force body aim");
-
-                    if(are_we_preferring_bodyaim || bodyaim_forced)
+                    render_outlined_indicator(screen_center_x, base_yaw, text, (is_aimbot_active ? [77.5, 186, 10, 200] : [255, 25, 30, 200]));
+                    base_yaw += 15;
+                    if(converted_ragebot_type != -1 && script_config.rbot_active)
                     {
-                        var color = bodyaim_forced ? [77.5, 186, 10, 200] : [190, 170, 18, 200];
-                        Render.StringCustom(screen_center_x, base_yaw, 1, "BAIM", color, font);
-                        base_yaw += 15;
-                    }
-
-                    var resolver_override_active = UI.IsHotkeyActive("Rage", "GENERAL", "General", "Resolver override");
-                    if(resolver_override_active)
-                    {
-                        Render.StringCustom(screen_center_x, base_yaw, 1, "OVERRIDE", [77.5, 186, 10, 200], font);
-                        base_yaw += 15;
-                    }
-                }
-            }
-            if(script_config.indicator_picks & (1 << 1))
-            {
-                var color = script_config.autowall_active || script_config.autowall_mode == 2 ? [77.5, 186, 10, 200] : (script_config.autowall_mode == 0 ? [190, 170, 18, 200] : [255, 25, 30, 200]);
-                Render.StringCustom(screen_center_x, base_yaw, 1, "AW", color, font);
-                base_yaw += 15;
-            }
-            if(script_config.indicator_picks & (1 << 2))
-            {
-                var fake_yaw = Local.GetFakeYaw();
-                var real_yaw = Local.GetRealYaw();
-                var diff = Math.round(angle_diff(fake_yaw, real_yaw));
-
-                var text = "AA";
-                if(script_config.legitaa_lby_mode == 1 && script_config.legitaa_juke_active)
-                {
-                    text += " (JUKE)";
-                }
-                var abs_clamped_diff = clamp(Math.abs(diff), 0, 60);
-                var proper_col = aa_shit_color(abs_clamped_diff, 200);
-                Render.StringCustom(screen_center_x, base_yaw, 1, text, proper_col, font);
-                base_yaw += 15;
-
-                var current_fake_side = indicator_dir; //Actually real side but w/e
-                var screen_center_y = screensize[1] * 0.5;
-                var screen_side_top = screensize[1] * 0.495;
-                var screen_side_bottom = screensize[1] * 0.505;
-
-                switch(current_fake_side)
-                {
-                    case -1: 
-                        var right_front = screensize[0] * 0.541; 
-                        var right_end = screensize[0] * 0.535;
-                            
-                        Render.Polygon([[right_front, screen_center_y], [right_end, screen_center_y], [right_end, screen_side_top]], proper_col);
-                        Render.Polygon([[right_front, screen_center_y], [right_end, screen_side_bottom], [right_end, screen_center_y]], proper_col);
-                        break;
-                    case 1:
-                        var left_front = screensize[0] * 0.459;
-                        var left_end = screensize[0] * 0.465;
-        
-                        Render.Polygon([[left_end, screen_center_y], [left_front, screen_center_y], [left_end, screen_side_top]], proper_col);
-                        Render.Polygon([[left_end, screen_side_bottom], [left_front, screen_center_y], [left_end, screen_center_y]], proper_col);
-                }
-            }
-            if(script_config.indicator_picks & (1 << 3))
-            {
-                var string = "CHOKE: " + get_choked_ticks_for_entity(local);
-                Render.StringCustom(screen_center_x, base_yaw, 1, string, [77.5, 186, 10, 200], font);
-                base_yaw += 15;
-            }
-            if(script_config.indicator_picks & (1 << 4))
-            {
-                var inaccuracy = Local.GetInaccuracy();
-                if(inaccuracy == 0)
-                {
-                    inaccuracy = 0.01;
-                }
-                var hc = 1 / inaccuracy;
-                var inaccuracy_text = "INACC: ";
-                inaccuracy_text += hc > 80 ? "LOW" : "HIGH";
-                Render.StringCustom(screen_center_x, base_yaw, 1, inaccuracy_text, (hc > 80 ? [77.5, 186, 10, 200] : [255, 25, 30, 200]), font);
-                base_yaw += 15;
-            }
-            if(script_config.indicator_picks & (1 << 5))
-            {
-                var text = (script_config.rbot_active ? "RAGE" : "LEGIT");
-                var col = script_config.rbot_active ? [135, 50, 168, 200] : [39, 214, 202, 200];
-                Render.StringCustom(screen_center_x, base_yaw, 1, text, col, font);
-            }
-            if(script_config.indicator_picks & (1 << 6))
-            {
-                var enemies = Entity.GetEnemies();
-                var enemy_arr_length = enemies.length;
-                var col = script_config.indicator_enemy_side_col;
-                for(var i = 0; i < enemy_arr_length; i++)
-                {
-                    if(Entity.IsValid(enemies[i]) && Entity.IsAlive(enemies[i]) && !Entity.IsDormant(enemies[i]) && !Entity.IsBot(enemies[i])) //Of course a bot cannot desync lol
-                    {
-                        //var enemy_choked_ticks = get_choked_ticks_for_entity(enemies[i]);
-                        //if(enemy_choked_ticks < 1)
-                        //{
-                           // continue;
-                        //}
-                        var enemy_freestanding_result = handle_edge_detection(enemies[i], 30);
-                        if(enemy_freestanding_result == 0)
+                        var are_we_preferring_safety = UI.GetValue("Rage", rbot_weapon_types[converted_ragebot_type], "Accuracy", "Prefer safe point");
+                        var safety_forced = UI.IsHotkeyActive("Rage", "GENERAL", "General", "Force safe point");
+                        
+                        if(are_we_preferring_safety || safety_forced)
                         {
-                            continue; 
+                            var color = safety_forced ? [77.5, 186, 10, 200] : [190, 170, 18, 200];
+                            render_outlined_indicator(screen_center_x, base_yaw, "SAFE", color);
+                            base_yaw += 15;
                         }
-                        var render_box = Entity.GetRenderBox(enemies[i]);
-                        if(render_box[0] == false)
+                        
+                        var are_we_preferring_bodyaim = UI.GetValue("Rage", rbot_weapon_types[converted_ragebot_type], "Accuracy", "Prefer body aim");
+                        var bodyaim_forced = UI.IsHotkeyActive("Rage", "GENERAL", "General", "Force body aim");
+
+                        if(are_we_preferring_bodyaim || bodyaim_forced)
                         {
-                            continue;
+                            var color = bodyaim_forced ? [77.5, 186, 10, 200] : [190, 170, 18, 200];
+                            render_outlined_indicator(screen_center_x, base_yaw, "BODY", color);
+                            base_yaw += 15;
                         }
-                        var center_of_bbox_x = render_box[3] - render_box[1];
-                        center_of_bbox_x /= 2;
-                        center_of_bbox_x += render_box[1];
-                        var text = "EST. REAL DIR: " + (enemy_freestanding_result == 1 ? "LEFT" : "RIGHT");
-                        Render.String(center_of_bbox_x, render_box[2] - 25, 1, text, col, 2);
+
+                        var resolver_override_active = UI.IsHotkeyActive("Rage", "GENERAL", "General", "Resolver override");
+                        if(resolver_override_active)
+                        {
+                            render_outlined_indicator(screen_center_x, base_yaw, "OVERRIDE", [77.5, 186, 10, 200]);
+                            base_yaw += 15;
+                        }
+                    }
+                }
+                if(script_config.indicator_picks & (1 << 1))
+                {
+                    var color = script_config.autowall_active || script_config.autowall_mode == 2 ? [77.5, 186, 10, 200] : (script_config.autowall_mode == 0 ? [190, 170, 18, 200] : [255, 25, 30, 200]);
+                    render_outlined_indicator(screen_center_x, base_yaw, "AW", color);
+                    base_yaw += 15;
+                }
+                if(script_config.indicator_picks & (1 << 2))
+                {
+                    var fake_yaw = Local.GetFakeYaw();
+                    var real_yaw = Local.GetRealYaw();
+                    var diff = Math.round(angle_diff(fake_yaw, real_yaw));
+                    var abs_diff = Math.abs(diff);
+                    var text = "AA " + abs_diff.toString();
+                    if(script_config.legitaa_lby_mode == 1 && script_config.legitaa_juke_active)
+                    {
+                        text += " (JUKE)";
+                    }
+                    var abs_clamped_diff = clamp(abs_diff, 0, 60);
+                    var proper_col = aa_shit_color(abs_clamped_diff, 200);
+                    render_outlined_indicator(screen_center_x, base_yaw, text, proper_col);
+                    base_yaw += 15;
+
+                    var current_fake_side = indicator_dir; //Actually real side but w/e
+                    var screen_center_y = screensize[1] * 0.5;
+                    var screen_side_top = screensize[1] * 0.495;
+                    var screen_side_bottom = screensize[1] * 0.505;
+
+                    switch(current_fake_side)
+                    {
+                        case -1: 
+                            var right_front = screensize[0] * 0.541; 
+                            var right_end = screensize[0] * 0.535;
+                                
+                            Render.Polygon([[right_front, screen_center_y], [right_end, screen_side_bottom], [right_end, screen_side_top]], proper_col);
+                            break;
+                        case 1:
+                            var left_front = screensize[0] * 0.459;
+                            var left_end = screensize[0] * 0.465;
+            
+                            Render.Polygon([[left_end, screen_side_bottom], [left_front, screen_center_y], [left_end, screen_side_top]], proper_col);
+                    }
+                }
+                if(script_config.indicator_picks & (1 << 3))
+                {
+                    var color = aa_shit_color((get_choked_ticks_for_entity(local) / 16) * 60, 200);
+                    render_outlined_indicator(screen_center_x, base_yaw, "FL", color);
+                    base_yaw += 15;
+                }
+                if(script_config.indicator_picks & (1 << 4))
+                {
+                    var text = (script_config.rbot_active ? "RAGE" : "LEGIT");
+                    var col = script_config.rbot_active ? [135, 50, 168, 200] : [39, 214, 202, 200];
+                    render_outlined_indicator(screen_center_x, base_yaw, text, col);
+                }
+                if(script_config.indicator_picks & (1 << 5))
+                {
+                    var enemies = Entity.GetEnemies();
+                    var enemy_arr_length = enemies.length;
+                    var col = script_config.indicator_enemy_side_col;
+                    for(var i = 0; i < enemy_arr_length; i++)
+                    {
+                        if(Entity.IsValid(enemies[i]) && Entity.IsAlive(enemies[i]) && !Entity.IsDormant(enemies[i]) && !Entity.IsBot(enemies[i])) //Of course a bot cannot desync lol
+                        {
+                            //var enemy_choked_ticks = get_choked_ticks_for_entity(enemies[i]);
+                            //if(enemy_choked_ticks < 1)
+                            //{
+                            // continue;
+                            //}
+                            var enemy_freestanding_result = handle_edge_detection(enemies[i], 30);
+                            if(enemy_freestanding_result == 0)
+                            {
+                                continue; 
+                            }
+                            var render_box = Entity.GetRenderBox(enemies[i]);
+                            if(render_box[0] == false)
+                            {
+                                continue;
+                            }
+                            var center_of_bbox_x = render_box[3] - render_box[1];
+                            center_of_bbox_x /= 2;
+                            center_of_bbox_x += render_box[1];
+                            var text = "EST. REAL DIR: " + (enemy_freestanding_result == 1 ? "LEFT" : "RIGHT");
+                            Render.String(center_of_bbox_x, render_box[2] - 25, 1, text, col, 2);
+                        }
+                    }
+                }
+            }
+            
+            
+            if(script_config.indicator_picks & (1 << 7) && Input.IsKeyPressed(0x09)) //Tab
+            {
+                var base_x = screensize[0] * 0.85;
+                var base_y = screensize[1] * 0.65;
+                Render.StringCustom(base_x, base_y, 1, "MM Data", [255, 255, 255, 255], watermark_font);
+                base_y += 15;
+                var players = Entity.GetPlayers();
+                var player_arr_length = players.length;
+                if(player_arr_length > 0)
+                {
+                    for(var i = 0; i < player_arr_length; i++)
+                    {
+                        if(Entity.IsValid(players[i]))
+                        {
+                            var player_name = Entity.GetName(players[i]);
+                            var player_win_amt = Entity.GetProp(players[i], "CCSPlayerResource", "m_iCompetitiveWins");
+                            var player_rank = mm_ranks[Entity.GetProp(players[i], "CCSPlayerResource", "m_iCompetitiveRanking")];
+                            var is_bot = Entity.IsBot(players[i]);
+                            if(is_bot)
+                            {
+                                player_name = "BOT " + player_name;
+                            }
+                            var final_string = player_name + " | Wins: " + player_win_amt.toString() + " | Rank: " + player_rank;
+                            Render.StringCustom(base_x, base_y, 1, final_string, [255, 255, 255, 255], watermark_font);
+                            base_y += 15;
+                        }
                     }
                 }
             }
         }
-        if(script_config.indicator_picks & (1 << 7)) //gay watermark
+        if(script_config.indicator_picks & (1 << 6)) //gay watermark
         {
             var server_ip = World.GetServerString();
             var are_we_ingame = server_ip != "" && Entity.IsValid(local);
@@ -1222,13 +1256,17 @@ function handle_indicators()
 }
 
 //Legitbot stuff begins about here. Get ready for bad code.
-function scan_targets(targeting_mode, min_damage, max_fov) //Kinda sad I can't really scan backtrack records using Onetap's API. Especially not with me using the ragebot.
+function scan_targets(targeting_mode, min_damage, max_fov, should_baim) //Kinda sad I can't really scan backtrack records using Onetap's API. Especially not with me using the ragebot.
 {
     var local_eyepos = Entity.GetEyePosition(local);
     var local_viewangles = Local.GetViewAngles();
     var hitboxes = [];
 
     var allowed_hitboxes = script_config.rbot_allowed_hitboxes;
+    if(should_baim)
+    {
+        allowed_hitboxes &= ~(1 << 0);
+    }
     var enemies = Entity.GetEnemies();
     var enemy_len = enemies.length;
     if(enemy_len == 0)
@@ -1311,7 +1349,7 @@ function scan_targets(targeting_mode, min_damage, max_fov) //Kinda sad I can't r
             }
         }
     }
-    return {pos: best_hitbox_pos, fov: best_fov, tgt: target}; //gamer moment
+    return {pos: best_hitbox_pos, fov: best_fov}; //gamer moment
 }
 
 function smooth_out_aim(original_angle, aimangle, factor)
@@ -1357,14 +1395,14 @@ function do_legitbot()
         var current_rage_weapon_category = convert_weapon_index_into_rbot_idx(current_weapon_category);
         var current_ragebot_fov = UI.GetValue("Rage", rbot_weapon_types[current_rage_weapon_category], "Targeting", "FOV"); //What's the point of the legitbot having it's own FOV?
         
-        var target = scan_targets(script_config.lbot_tgt_select, script_config.lbot_mindmg, current_ragebot_fov);
+        var target = scan_targets(script_config.lbot_tgt_select, script_config.lbot_mindmg, current_ragebot_fov, current_rage_weapon_category == 4);
         if(target.fov != -1 && target.fov != 999)
         {
             var selected_smoothing = target.fov < current_ragebot_fov / 4 ? (Math.max(script_config.lbot_smooth * 0.75 * Math.min(Globals.Frametime() / Globals.TickInterval(), 1), 1)) : (script_config.lbot_smooth * Math.min(Globals.Frametime() / Globals.TickInterval(), 1));
             var angle_to_tgt = calculate_angle(local_eyepos, target.pos, aimangle);
             aimangle = smooth_out_aim(aimangle, angle_to_tgt, selected_smoothing);
+            Local.SetViewAngles(aimangle);
         }
-        Local.SetViewAngles(aimangle);
     }
 }
 
@@ -1411,15 +1449,19 @@ function on_draw()
 var normal_killsays = ["ez", "too fucking easy", "effortless", "easiest kill of my life", 
     "retard blasted", "cleans?", "nice memesense retard", "hello mind explaining what happened there", 
     "pounce out of your window disgusting tranny, you shouldnt exist in this world", 
+    "а вы че клины???", "обоссал мемюзера лол", "ты че там отлетел то", 
     "lmao ur so ugly irl like bro doesnt it hurt to live like that, btw you know you can just end it all",
     "ROFL NICE *DEAD* HHHHHHHHHHHHHHHHHH", "take the cooldown and let your team surr retard",
     "go take some estrogen tranny", "uid police here present your user identification number right now",
-    "tranny holzed", 
-    "better buy the superior hack!",
-    "whatcha shootin at retard",
-    "nice 0.5x0.5m room you poorfag, how the fuck did you afford an acc hhhhhh",
-    "imagine losing at video games couldn't ever be me", "nice chromosome count you sell??", "nice thirdworldspeak ROFL",
-    "bruh thats just embarassing"
+    "нищий улетел", "*DEAD* пофикси нищ", "сразу видно юид иссуе хуле тут",
+    "у мамки что кфг иссуе была шо тебя родила", "а ты и в жизни ньюкамыч????", "сука не позорься и ливни лол",
+    "юид полиция подьехала открывай дверь уебыч", "набутылирован лол", "tranny holzed", 
+    "але ты там из хрущевки выеди а потом вырыгивай блять", "как там с мамкой комнату разделять АХАХАХХАХА как ты на акк накопил блять",
+    "найс 0.5х0.5м комната блять ХАХАХАХА ТЫ ТАМ ЖЕ ДАЖЕ ПОВЕСИТЬСЯ НЕ МОЖЕШЬ МЕСТА НЕТ ПХПХПХППХ", "better buy the superior hack!",
+    "на мыло и веревку то деньги есть нищ????", "whatcha shootin at retard", "опущены стяги, легион и.. А БЛЯТЬ ТЫЖ ТУТ ОПУЩ НАХУЙ ПХГАХААХАХАХАХА)))))))",
+    "але какая с юидом ситуация)))", "бля че тут эта нищая собака заскулила", "не хотелось даже руки об тебя марать нищ сука", "ебать ты красиво на бутылку упал",
+    "прости что без смазки)))", "алло это скорая? тут такая ситуация нищ упал))) ОЙ А ВЫ НИЩАМ ТО НЕ ПОМОГАЕТЕ?? ПОНЯТНО Я ПОЙДУ ТОГДА))))))))", "nice 0.5x0.5m room you poorfag, how the fuck did you afford an acc hhhhhh", "вырыгнись из окна нахуй боберхук юзер",
+    "тяжело с мемсенсом наверно????", "imagine losing at video games couldn't ever be me", "але а противники то где???", "nice chromosome count you sell??", "nice thirdworldspeak ROFL", "как ты на пк накопил даже не знаю )))))))))"
 ];
     
 var hs_killsays = ["ez", "effortless", "1", "nice antiaim, you sell?", "you pay for that?", 
@@ -1428,15 +1470,30 @@ var hs_killsays = ["ez", "effortless", "1", "nice antiaim, you sell?", "you pay 
     "hhhhhhhhhhhhhhhhhh 1, you pay for that? refund so maybe youll afford some food for your family thirdworld monkey",
     "paster abandoned the match and received a 7 day competitive matchmaking cooldown",
     "freeqn.net/refund.php", "refund your rainbowhook right now pasteuser dog",
-    "i dont think thirdworlders got the right to communicate",
+    "бля эт пиздец че какие то там нищи с мемсенсом рыгают блять",
+    "тебе права голоса не давали thirdworlder ебаный",
+    "на завод иди",
     "JAJAJAJJAJA NICE RAINBOWPASTE ROFL",
     "140er????", "get good get vantap4ik",
     "1 but all you need to fix your problems is a rope and a chair you ugly shit",
     "who (kto) are you (nn4ik) wattafak mens???????", "must be an uid issue", "holy shit consider refunding your trash paste rofl",
     "hello please refund your subpar product",
+    "ебать тебя унесло", "рефандни пожалуйста", 
+    "на бутылку русак",
+    "a вы (you) сэр собственно кто (who)?",
+    "бля пиздос может рефнешь???",
+    "как там жизнь с рупастой??????",
+    "але может не будешь тратить мамкину зарплату на говнопасты???",
     "stop spending your lunch money on shitpastes retard",
+    "бля я рядом только прошел а ты уже упал АУУ НИЩ С ТОБОЙ ВСЕ ХОРОШО??????????))))))",
+    "ой нищий упал щас скорую вызовем)) алло 112 тут надо скорую с нищим че-то случилось а я трогать не хочу)))))))))))))))))))))",
+    "ой а кто (who) ты (you) такой вотзефак мен))))))",
     "thats going in my media compilation right there get shamed retard rofl",
-    "imagine the only thing you eat being bullets man being a thirdworlder must suck rofl", "so fucking ez", "bot_kick", "where the enemies at????"
+    "imagine the only thing you eat being bullets man being a thirdworlder must suck rofl", "so fucking ez", "bot_kick", "where the enemies at????",
+    "але найс упал нищ ЛОООООООЛ", "с тобой там все хорошо????????????? а да ты нищ нахуя я спрашиваю ПХАХАХАХАХХА",
+    "жаль конечно что против нищей играть надо)))", "тебе даже спин не поможет блять, нахуй ты вообще живешь", "ты можешь заселлить лишнюю хромосому???",
+    "научи потом как так сосать на хвх", "когда не накопил на гормоны и чулки)))))))))))))", "как там жизнь на мамкину пенсию???????", "але я бот_кик в консоль вроде прописал а вас там не кикнуло эт че баг??)))))))))",
+    "крякоюзер down, на завод нахуй", "я не понял ты такой жирный потомучто дошики каждый день жрешь???? нормальную работу найди может на еду денег хватит))))))))))))", "отлетел как самолет нахуй)))))"
 ];
 
 
