@@ -762,8 +762,8 @@ function handle_autowall()
                             break;
                         }
                     }
-                    var trace = Trace.Bullet(local, target, local_eyepos, hitbox);
-                    if(trace[2])
+                    var trace = Trace.Line(local, local_eyepos, hitbox);
+                    if(trace[0] == target)
                     {
                         visible_hitbox_amount++
                         returned_object.proper_hitboxes |= (1 << ragebot_corresponding_hitgroup);
