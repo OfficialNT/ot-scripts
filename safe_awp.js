@@ -9,7 +9,7 @@ const c_weapon_awp = 232;
 
 function on_move()
 {
-    if(UI.GetValue("Misc", "JAVASCRIPT", "Script Items", "Safe AWP"))
+    if(UI.GetValue("Misc", "JAVASCRIPT", "Script items", "Safe AWP"))
     {
         var local = Entity.GetLocalPlayer();
         var local_weapon = Entity.GetWeapon(local);
