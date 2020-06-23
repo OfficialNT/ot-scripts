@@ -1,5 +1,3 @@
-var js_items = ["Misc", "JAVASCRIPT", "Script Items"];
-
 UI.AddCheckbox("Safe AWP");
 
 function is_hitbox_potentially_unsafe(hitbox)
@@ -11,7 +9,7 @@ const c_weapon_awp = 232;
 
 function on_move()
 {
-    if(UI.GetValue(js_items, "Safe AWP"))
+    if(UI.GetValue("Misc", "JAVASCRIPT", "Script Items", "Safe AWP"))
     {
         var local = Entity.GetLocalPlayer();
         var local_weapon = Entity.GetWeapon(local);
