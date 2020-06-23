@@ -4,7 +4,7 @@ for(var i = 0; i < valid_dt_weapons.length; i++)
     UI.AddSliderInt(valid_dt_weapons[i] + " doubletap hitchance", 0, 100);
 }
 
-var js_items = ["Misc", "JAVASCRIPT", "Script Items"];
+
 
 var should_override_hc = false;
 
@@ -17,7 +17,7 @@ function get_current_weapon_doubletap_hitchance()
     var local_player_weapon_classid = Entity.GetClassID(Entity.GetWeapon(local));
     if(local_player_weapon_classid == cached_weapon_classid && current_weapon_type != -1)
     {
-        return UI.GetValue(js_items, (valid_dt_weapons[cached_weapon_type] + " doubletap hitchance"));
+        return UI.GetValue("Misc", "JAVASCRIPT", "Script items", (valid_dt_weapons[cached_weapon_type] + " doubletap hitchance"));
     } 
     var current_weapon_type = -1;
     switch(local_player_weapon_classid)
@@ -45,7 +45,7 @@ function get_current_weapon_doubletap_hitchance()
     {
         return -1;
     }
-    return UI.GetValue(js_items, valid_dt_weapons[current_weapon_type] + " doubletap hitchance");
+    return UI.GetValue("Misc", "JAVASCRIPT", "Script items", valid_dt_weapons[current_weapon_type] + " doubletap hitchance");
 }
 
 function on_move()
