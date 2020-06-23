@@ -1,6 +1,5 @@
 UI.AddCheckbox("premium trashtalk");
-var js_items = ["Misc", "JAVASCRIPT", "Script Items"];
-//Gay killsay territory
+//Gay killsay territory yes
 var normal_killsays = ["ez", "too fucking easy", "effortless", "easiest kill of my life", 
     "retard blasted", "cleans?", "nice memesense retard", "hello mind explaining what happened there", 
     "pounce out of your window disgusting tranny, you shouldnt exist in this world", 
@@ -56,7 +55,7 @@ var hs_killsays = ["ez", "effortless", "1", "nice antiaim, you sell?", "you pay 
 
 function on_player_death()
 {
-    if(UI.GetValue(js_items, "premium trashtalk"))
+    if(UI.GetValue("Misc", "JAVASCRIPT", "Script Items", "premium trashtalk"))
     {
         var victim = Entity.GetEntityFromUserID(Event.GetInt("userid"));
 		var attacker = Entity.GetEntityFromUserID(Event.GetInt("attacker"));
