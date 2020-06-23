@@ -55,7 +55,7 @@ var hs_killsays = ["ez", "effortless", "1", "nice antiaim, you sell?", "you pay 
 
 function on_player_death()
 {
-    if(UI.GetValue("Misc", "JAVASCRIPT", "Script Items", "premium trashtalk"))
+    if(UI.GetValue("Misc", "JAVASCRIPT", "Script items", "premium trashtalk"))
     {
         var victim = Entity.GetEntityFromUserID(Event.GetInt("userid"));
 		var attacker = Entity.GetEntityFromUserID(Event.GetInt("attacker"));
