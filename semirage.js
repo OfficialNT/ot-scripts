@@ -1,4 +1,3 @@
-var js_items = ["Misc", "JAVASCRIPT", "Script Items"];
 var rbot_weapon_types = ["GENERAL", "PISTOL", "HEAVY PISTOL", "SCOUT", "AWP", "AUTOSNIPER"];
 var reworked_lbot_guns = ["Pistol", "Heavy pistol", "Heavy", "Rifle", "SMG", "Scout", "AWP", "Autosnipers"];
 var rbot_hitboxes = ["Head", "Upper chest", "Chest", "Lower chest", "Stomach", "Pelvis", "Legs", "Feet"];
@@ -50,7 +49,7 @@ function setup_menu()
     UI.AddColorPicker("Side text color");
 
     UI.AddColorPicker("Watermark accent color");
-    UI.SetColor(js_items, "Watermark accent color", [255, 255, 255, 200]);
+    UI.SetColor("Misc", "JAVASCRIPT", "Script Items", "Watermark accent color", [255, 255, 255, 200]);
     UI.AddCheckbox("Rage shot logs");
 
     UI.AddCheckbox("Trashtalk");
@@ -208,30 +207,30 @@ function convert_weapon_index_into_rbot_idx(wpn_index) //Converts current weapon
 var prev_wpntype_settings = -1;
 function update_settings()
 {
-    script_config.script_active = UI.GetValue(js_items, "Enable semirage assist");
+    script_config.script_active = UI.GetValue("Misc", "JAVASCRIPT", "Script Items", "Enable semirage assist");
 
     script_config.rbot_active = UI.IsHotkeyActive("Rage", "General", "Enabled");
-    script_config.lbot_active = UI.IsHotkeyActive(js_items, "Legitbot aimkey");
-    script_config.autowall_active = UI.IsHotkeyActive(js_items, "Autowall");
+    script_config.lbot_active = UI.IsHotkeyActive("Misc", "JAVASCRIPT", "Script items", "Legitbot aimkey");
+    script_config.autowall_active = UI.IsHotkeyActive("Misc", "JAVASCRIPT", "Script items", "Autowall");
     
-    script_config.legitaa_active = UI.GetValue(js_items, "Enable legit AA");
-    script_config.legitaa_safety_active = UI.GetValue(js_items, "Safety checks");
-    script_config.legitaa_lby_mode = UI.GetValue(js_items, "LBY Mode");
-    script_config.legitaa_juke_active = UI.IsHotkeyActive(js_items, "Legit AA juke");
-    script_config.legitaa_edge_active = UI.GetValue(js_items, "Legit AA edge detection");
-    script_config.legitaa_peek_behavior = UI.GetValue(js_items, "Peeking mode");
+    script_config.legitaa_active = UI.GetValue("Misc", "JAVASCRIPT", "Script items", "Enable legit AA");
+    script_config.legitaa_safety_active = UI.GetValue("Misc", "JAVASCRIPT", "Script items", "Safety checks");
+    script_config.legitaa_lby_mode = UI.GetValue("Misc", "JAVASCRIPT", "Script items", "LBY Mode");
+    script_config.legitaa_juke_active = UI.IsHotkeyActive("Misc", "JAVASCRIPT", "Script items", "Legit AA juke");
+    script_config.legitaa_edge_active = UI.GetValue("Misc", "JAVASCRIPT", "Script items", "Legit AA edge detection");
+    script_config.legitaa_peek_behavior = UI.GetValue("Misc", "JAVASCRIPT", "Script items", "Peeking mode");
 
-    script_config.gay_fakelag_active = UI.GetValue(js_items, "Trigger fakelag on visible");
-    script_config.gay_fakelag_vis_choke = UI.GetValue(js_items, "Choke on visible");
-    script_config.gay_fakelag_invis_choke = UI.GetValue(js_items, "Normal choke");
+    script_config.gay_fakelag_active = UI.GetValue("Misc", "JAVASCRIPT", "Script items", "Trigger fakelag on visible");
+    script_config.gay_fakelag_vis_choke = UI.GetValue("Misc", "JAVASCRIPT", "Script items", "Choke on visible");
+    script_config.gay_fakelag_invis_choke = UI.GetValue("Misc", "JAVASCRIPT", "Script items", "Normal choke");
 
-    script_config.indicator_picks = UI.GetValue(js_items, "Semirage assist indicators");
-    script_config.indicator_offset = UI.GetValue(js_items, "Indicator offset (y)");
-    script_config.indicator_enemy_side_col = UI.GetColor(js_items, "Side text color");
-    script_config.indicator_watermark_accent_col = UI.GetColor(js_items, "Watermark accent color");
+    script_config.indicator_picks = UI.GetValue("Misc", "JAVASCRIPT", "Script items", "Semirage assist indicators");
+    script_config.indicator_offset = UI.GetValue("Misc", "JAVASCRIPT", "Script items", "Indicator offset (y)");
+    script_config.indicator_enemy_side_col = UI.GetColor("Misc", "JAVASCRIPT", "Script items", "Side text color");
+    script_config.indicator_watermark_accent_col = UI.GetColor("Misc", "JAVASCRIPT", "Script items", "Watermark accent color");
 
-    script_config.rage_shot_log = UI.GetValue(js_items, "Rage shot logs");
-    script_config.trashtalk = UI.GetValue(js_items, "Trashtalk");
+    script_config.rage_shot_log = UI.GetValue("Misc", "JAVASCRIPT", "Script items", "Rage shot logs");
+    script_config.trashtalk = UI.GetValue("Misc", "JAVASCRIPT", "Script items", "Trashtalk");
     if(World.GetServerString() == "" || !Entity.IsValid(local) || !Entity.IsAlive(local)) 
     {
         return; //Can't really go further without using localplayer's weapon.
@@ -245,30 +244,30 @@ function update_settings()
     
     var weapon_name = reworked_lbot_guns[local_weapon_type];
 
-    script_config.autowall_mode = UI.GetValue(js_items, weapon_name + " w/o autowall key");
-    script_config.legit_autowall_modifiers = UI.GetValue(js_items, weapon_name + " autowall triggers");
-    script_config.legit_autowall_hurt_time = UI.GetValue(js_items, weapon_name + " time after hurt (s)");
-    script_config.legit_autowall_ragebot_decay_time = UI.GetValue(js_items, weapon_name + " shot expire time (s)");
-    script_config.rbot_fov_awall = UI.GetValue(js_items, weapon_name + " autowall FOV");
+    script_config.autowall_mode = UI.GetValue("Misc", "JAVASCRIPT", "Script items", weapon_name + " w/o autowall key");
+    script_config.legit_autowall_modifiers = UI.GetValue("Misc", "JAVASCRIPT", "Script items", weapon_name + " autowall triggers");
+    script_config.legit_autowall_hurt_time = UI.GetValue("Misc", "JAVASCRIPT", "Script items", weapon_name + " time after hurt (s)");
+    script_config.legit_autowall_ragebot_decay_time = UI.GetValue("Misc", "JAVASCRIPT", "Script items", weapon_name + " shot expire time (s)");
+    script_config.rbot_fov_awall = UI.GetValue("Misc", "JAVASCRIPT", "Script items", weapon_name + " autowall FOV");
 
-    script_config.rbot_allowed_hitboxes = UI.GetValue(js_items, weapon_name + " allowed hitboxes");
+    script_config.rbot_allowed_hitboxes = UI.GetValue("Misc", "JAVASCRIPT", "Script items", weapon_name + " allowed hitboxes");
 
-    script_config.rbot_fov_min = UI.GetValue(js_items, weapon_name + " dynamic FOV min");
-    script_config.rbot_fov_max = UI.GetValue(js_items, weapon_name + " dynamic FOV max");
+    script_config.rbot_fov_min = UI.GetValue("Misc", "JAVASCRIPT", "Script items", weapon_name + " dynamic FOV min");
+    script_config.rbot_fov_max = UI.GetValue("Misc", "JAVASCRIPT", "Script items", weapon_name + " dynamic FOV max");
 
-    script_config.lbot_smooth = UI.GetValue(js_items, weapon_name + " legit smooth");
-    script_config.lbot_tgt_select = UI.GetValue(js_items, weapon_name + " legit hitbox selection mode");
-    script_config.lbot_rcs_x = UI.GetValue(js_items, weapon_name + " RCS (p)");
-    script_config.lbot_rcs_y = UI.GetValue(js_items, weapon_name + " RCS (y)");
-    script_config.lbot_mindmg = UI.GetValue(js_items, weapon_name + " legit mindmg");
-    script_config.lbot_kill_delay = UI.GetValue(js_items, weapon_name + " kill delay");
+    script_config.lbot_smooth = UI.GetValue("Misc", "JAVASCRIPT", "Script items", weapon_name + " legit smooth");
+    script_config.lbot_tgt_select = UI.GetValue("Misc", "JAVASCRIPT", "Script items", weapon_name + " legit hitbox selection mode");
+    script_config.lbot_rcs_x = UI.GetValue("Misc", "JAVASCRIPT", "Script items", weapon_name + " RCS (p)");
+    script_config.lbot_rcs_y = UI.GetValue("Misc", "JAVASCRIPT", "Script items", weapon_name + " RCS (y)");
+    script_config.lbot_mindmg = UI.GetValue("Misc", "JAVASCRIPT", "Script items", weapon_name + " legit mindmg");
+    script_config.lbot_kill_delay = UI.GetValue("Misc", "JAVASCRIPT", "Script items", weapon_name + " kill delay");
 
     if(convert_weapon_index_into_rbot_idx(local_weapon_type) == 0)
     {
-        script_config.rbot_optional_mindmg = UI.GetValue(js_items, weapon_name + " minimum damage");
-        script_config.rbot_optional_hc = UI.GetValue(js_items, weapon_name + " hitchance");
-        script_config.rbot_optional_baim = UI.GetValue(js_items, weapon_name + " prefer bodyaim");
-        script_config.rbot_optional_safepoint = UI.GetValue(js_items, weapon_name + " prefer safepoint");
+        script_config.rbot_optional_mindmg = UI.GetValue("Misc", "JAVASCRIPT", "Script items", weapon_name + " minimum damage");
+        script_config.rbot_optional_hc = UI.GetValue("Misc", "JAVASCRIPT", "Script items", weapon_name + " hitchance");
+        script_config.rbot_optional_baim = UI.GetValue("Misc", "JAVASCRIPT", "Script items", weapon_name + " prefer bodyaim");
+        script_config.rbot_optional_safepoint = UI.GetValue("Misc", "JAVASCRIPT", "Script items", weapon_name + " prefer safepoint");
     }
     prev_wpntype_settings = local_weapon_type;
 }
@@ -288,36 +287,36 @@ function handle_visibility()
     {
         return; //What's the point of handling menu visibility if the damn thing isn't even visible?
     }
-    var indicator_picks = UI.GetValue(js_items, "Semirage assist indicators");
+    var indicator_picks = UI.GetValue("Misc", "JAVASCRIPT", "Script items", "Semirage assist indicators");
     if(script_config.script_active != last_script_enabled_state || last_legitaa_mode != script_config.legitaa_active || was_legitaa_edge_active != script_config.legitaa_edge_active || indicator_picks != old_indicator_picks || last_fakelag_state != script_config.gay_fakelag_active)
     {
-        UI.SetEnabled(js_items, "Autowall", script_config.script_active);
-        UI.SetEnabled(js_items, "Legitbot aimkey", script_config.script_active);
-        UI.SetEnabled(js_items, "Currently configured weapon", script_config.script_active);
+        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", "Autowall", script_config.script_active);
+        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", "Legitbot aimkey", script_config.script_active);
+        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", "Currently configured weapon", script_config.script_active);
 
-        UI.SetEnabled(js_items, "Enable legit AA", script_config.script_active);
-        UI.SetEnabled(js_items, "Safety checks", script_config.script_active && script_config.legitaa_active);
-        UI.SetEnabled(js_items, "LBY Mode", script_config.script_active && script_config.legitaa_active);
-        UI.SetEnabled(js_items, "Legit AA juke (only in rage)", script_config.script_active && script_config.legitaa_active);
+        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", "Enable legit AA", script_config.script_active);
+        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", "Safety checks", script_config.script_active && script_config.legitaa_active);
+        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", "LBY Mode", script_config.script_active && script_config.legitaa_active);
+        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", "Legit AA juke (only in rage)", script_config.script_active && script_config.legitaa_active);
         
-        UI.SetEnabled(js_items, "Legit AA edge detection", script_config.script_active && script_config.legitaa_active);
-        UI.SetEnabled(js_items, "Peeking mode", script_config.script_active && script_config.legitaa_active && script_config.legitaa_edge_active);
-        UI.SetEnabled(js_items, "Semirage assist indicators", script_config.script_active);
+        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", "Legit AA edge detection", script_config.script_active && script_config.legitaa_active);
+        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", "Peeking mode", script_config.script_active && script_config.legitaa_active && script_config.legitaa_edge_active);
+        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", "Semirage assist indicators", script_config.script_active);
         
-        UI.SetEnabled(js_items, "Indicator offset (y)", script_config.script_active);
+        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", "Indicator offset (y)", script_config.script_active);
 
-        UI.SetEnabled(js_items, "Side text color", script_config.script_active && indicator_picks & (1 << 6));
-        UI.SetEnabled(js_items, "Watermark accent color", script_config.script_active && indicator_picks & (1 << 7));
-        UI.SetEnabled(js_items, "Rage shot logs", script_config.script_active);
-        UI.SetEnabled(js_items, "Trashtalk", script_config.script_active);
+        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", "Side text color", script_config.script_active && indicator_picks & (1 << 6));
+        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", "Watermark accent color", script_config.script_active && indicator_picks & (1 << 7));
+        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", "Rage shot logs", script_config.script_active);
+        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", "Trashtalk", script_config.script_active);
 
-        UI.SetEnabled(js_items, "Trigger fakelag on visible", script_config.script_active);
-        UI.SetEnabled(js_items, "Choke on visible", script_config.script_active && script_config.gay_fakelag_active);
-        UI.SetEnabled(js_items, "Normal choke", script_config.script_active && script_config.gay_fakelag_active);
+        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", "Trigger fakelag on visible", script_config.script_active);
+        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", "Choke on visible", script_config.script_active && script_config.gay_fakelag_active);
+        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", "Normal choke", script_config.script_active && script_config.gay_fakelag_active);
     }
     old_indicator_picks = indicator_picks;
     last_fakelag_state = script_config.gay_fakelag_active;
-    var cur_selected_gun = UI.GetValue(js_items, "Currently configured weapon"); //Shame I have to do it like this.
+    var cur_selected_gun = UI.GetValue("Misc", "JAVASCRIPT", "Script items", "Currently configured weapon"); //Shame I have to do it like this.
     var lbot_weapons_length = 8; //Hardcoded because it won't change lol
     
     for(var i = 0; i < lbot_weapons_length; i++)
@@ -325,35 +324,35 @@ function handle_visibility()
         var weapon_name = reworked_lbot_guns[i];
         if(last_configured_weapon != cur_selected_gun || script_config.script_active != last_script_enabled_state)
         {
-            UI.SetEnabled(js_items, weapon_name + " allowed hitboxes", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", weapon_name + " allowed hitboxes", script_config.script_active && cur_selected_gun == i);
 
-            UI.SetEnabled(js_items, weapon_name + " dynamic FOV min", script_config.script_active && cur_selected_gun == i);
-            UI.SetEnabled(js_items, weapon_name + " dynamic FOV max", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", weapon_name + " dynamic FOV min", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", weapon_name + " dynamic FOV max", script_config.script_active && cur_selected_gun == i);
 
-            UI.SetEnabled(js_items, weapon_name + " legit hitbox selection mode", script_config.script_active && cur_selected_gun == i);
-            UI.SetEnabled(js_items, weapon_name + " legit smooth", script_config.script_active && cur_selected_gun == i);
-            UI.SetEnabled(js_items, weapon_name + " legit mindmg", script_config.script_active && cur_selected_gun == i);
-            UI.SetEnabled(js_items, weapon_name + " RCS (p)", script_config.script_active && cur_selected_gun == i);
-            UI.SetEnabled(js_items, weapon_name + " RCS (y)", script_config.script_active && cur_selected_gun == i);
-            UI.SetEnabled(js_items, weapon_name + " kill delay", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", weapon_name + " legit hitbox selection mode", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", weapon_name + " legit smooth", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", weapon_name + " legit mindmg", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", weapon_name + " RCS (p)", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", weapon_name + " RCS (y)", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", weapon_name + " kill delay", script_config.script_active && cur_selected_gun == i);
 
-            UI.SetEnabled(js_items, weapon_name + " hitchance", script_config.script_active && cur_selected_gun == i && (i == 2 || i == 3 || i == 4));
-            UI.SetEnabled(js_items, weapon_name + " minimum damage", script_config.script_active && cur_selected_gun == i && (i == 2 || i == 3 || i == 4));
-            UI.SetEnabled(js_items, weapon_name + " prefer bodyaim", script_config.script_active && cur_selected_gun == i && (i == 2 || i == 3 || i == 4));
-            UI.SetEnabled(js_items, weapon_name + " prefer safepoint", script_config.script_active && cur_selected_gun == i && (i == 2 || i == 3 || i == 4));
+            UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", weapon_name + " hitchance", script_config.script_active && cur_selected_gun == i && (i == 2 || i == 3 || i == 4));
+            UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", weapon_name + " minimum damage", script_config.script_active && cur_selected_gun == i && (i == 2 || i == 3 || i == 4));
+            UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", weapon_name + " prefer bodyaim", script_config.script_active && cur_selected_gun == i && (i == 2 || i == 3 || i == 4));
+            UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", weapon_name + " prefer safepoint", script_config.script_active && cur_selected_gun == i && (i == 2 || i == 3 || i == 4));
         }
         var awall_mode = UI.GetValue(weapon_name + " w/o autowall key");
         if(last_configured_weapon != cur_selected_gun || script_config.script_active != last_script_enabled_state || awall_mode != last_awall_state_for_weapons[i])
         {
-            UI.SetEnabled(js_items, weapon_name + " w/o autowall key", script_config.script_active && cur_selected_gun == i);
-            UI.SetEnabled(js_items, weapon_name + " autowall triggers", script_config.script_active && cur_selected_gun == i && awall_mode == 0);
+            UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", weapon_name + " w/o autowall key", script_config.script_active && cur_selected_gun == i);
+            UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", weapon_name + " autowall triggers", script_config.script_active && cur_selected_gun == i && awall_mode == 0);
         }
         var awall_triggers = UI.GetValue(weapon_name + " autowall triggers");
         if(last_configured_weapon != cur_selected_gun || script_config.script_active != last_script_enabled_state || awall_mode != last_awall_state_for_weapons[i] || awall_triggers != last_awall_triggers_for_weapons[i])
         {
-            UI.SetEnabled(js_items, weapon_name + " time after hurt (s)", script_config.script_active && cur_selected_gun == i && awall_mode == 0 && awall_triggers & (1 << 1));
-            UI.SetEnabled(js_items, weapon_name + " autowall FOV", script_config.script_active && cur_selected_gun == i && awall_mode == 0 && awall_triggers & (1 << 2));
-            UI.SetEnabled(js_items, weapon_name + " shot expire time (s)", script_config.script_active && cur_selected_gun == i && awall_mode == 0 && awall_triggers & (1 << 4));
+            UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", weapon_name + " time after hurt (s)", script_config.script_active && cur_selected_gun == i && awall_mode == 0 && awall_triggers & (1 << 1));
+            UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", weapon_name + " autowall FOV", script_config.script_active && cur_selected_gun == i && awall_mode == 0 && awall_triggers & (1 << 2));
+            UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", weapon_name + " shot expire time (s)", script_config.script_active && cur_selected_gun == i && awall_mode == 0 && awall_triggers & (1 << 4));
         }
         last_awall_state_for_weapons[i] = awall_mode;
         last_awall_triggers_for_weapons[i] = awall_triggers;
