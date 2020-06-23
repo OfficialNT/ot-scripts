@@ -3,7 +3,7 @@ UI.AddSliderInt("Anti-bruteforce step", 5, 25);
 UI.AddCheckbox("Invert fake on step");
 
 var math_library = require("mathlib.js"); 
-var js_items = ["Misc", "JAVASCRIPT", "Script Items"];
+var js_items = "Misc";
 
 function random_int(min, max)
 {
