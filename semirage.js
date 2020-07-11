@@ -7,7 +7,8 @@ const menu =
         TYPE_VALUE: 0,
         TYPE_COLOR: 1,
         TYPE_KEYBIND: 2,
-        TYPE_REFERENCE: 3
+        TYPE_REFERENCE: 3,
+        TYPE_STRING: 4
     },
 
     menu_array: [], //where the items lie lol
@@ -15,44 +16,37 @@ const menu =
     //I understand that all of those can be generalized, but this way the code is more clear.
     create_checkbox: function(created_var_name)
     {
-        UI.AddCheckbox(created_var_name);
-        return this.menu_array.push({type: this.menu_types.TYPE_VALUE, var_name: created_var_name, is_item_visible: true}) - 1;
+        return this.menu_array.push({type: this.menu_types.TYPE_VALUE, var_name: UI.AddCheckbox(created_var_name), is_item_visible: true}) - 1; //I guess the variable naming is a bit gay rofl
     },
 
     create_slider_int: function(created_var_name, created_var_min, created_var_max)
     {
-        UI.AddSliderInt(created_var_name, created_var_min, created_var_max);
-        return this.menu_array.push({type: this.menu_types.TYPE_VALUE, var_name: created_var_name, is_item_visible: true}) - 1;
+        return this.menu_array.push({type: this.menu_types.TYPE_VALUE, var_name: UI.AddSliderInt(created_var_name, created_var_min, created_var_max), is_item_visible: true}) - 1;
     },
 
     create_slider_float: function(created_var_name, created_var_min, created_var_max)
     {
-        UI.AddSliderFloat(created_var_name, created_var_min, created_var_max);
-        return this.menu_array.push({type: this.menu_types.TYPE_VALUE, var_name: created_var_name, is_item_visible: true}) - 1;
+        return this.menu_array.push({type: this.menu_types.TYPE_VALUE, var_name: UI.AddSliderFloat(created_var_name, created_var_min, created_var_max), is_item_visible: true}) - 1;
     },
 
     create_dropdown: function(created_var_name, created_var_dropdown_array)
     {
-        UI.AddDropdown(created_var_name, created_var_dropdown_array);
-        return this.menu_array.push({type: this.menu_types.TYPE_VALUE, var_name: created_var_name, is_item_visible: true}) - 1;
+        return this.menu_array.push({type: this.menu_types.TYPE_VALUE, var_name: UI.AddDropdown(created_var_name, created_var_dropdown_array), is_item_visible: true}) - 1;
     },
 
     create_multi_dropdown: function(created_var_name, created_var_dropdown_array)
     {
-        UI.AddMultiDropdown(created_var_name, created_var_dropdown_array);
-        return this.menu_array.push({type: this.menu_types.TYPE_VALUE, var_name: created_var_name, is_item_visible: true}) - 1;
+        return this.menu_array.push({type: this.menu_types.TYPE_VALUE, var_name: UI.AddMultiDropdown(created_var_name, created_var_dropdown_array), is_item_visible: true}) - 1;
     },
 
     create_colorpicker: function(created_var_name)
     {
-        UI.AddColorPicker(created_var_name);
-        return this.menu_array.push({type: this.menu_types.TYPE_COLOR, var_name: created_var_name, is_item_visible: true}) - 1;
+        return this.menu_array.push({type: this.menu_types.TYPE_COLOR, var_name: UI.AddColorPicker(created_var_name), is_item_visible: true}) - 1;
     },
 
     create_keybind: function(created_var_name)
     {
-        UI.AddHotkey(created_var_name);
-        return this.menu_array.push({type: this.menu_types.TYPE_KEYBIND, var_name: created_var_name, is_item_visible: true}) - 1;
+        return this.menu_array.push({type: this.menu_types.TYPE_KEYBIND, var_name: UI.AddHotkey(created_var_name), is_item_visible: true}) - 1;
     },
 
     create_menu_reference: function(var_path, var_type)
@@ -60,35 +54,29 @@ const menu =
         return this.menu_array.push({type: this.menu_types.TYPE_REFERENCE, var_name: var_path, is_item_visible: true, reference_subtype: var_type}) - 1;
     },
 
+    create_string: function(created_var_name)
+    {
+        return this.menu_array.push({type: this.menu_types.TYPE_STRING, var_name: UI.AddTextbox(created_var_name), is_item_visible: true}) - 1;
+    },
+
     get_item_value: function(var_index)
     {
         if(typeof(this.menu_array[var_index]) != "undefined")
         {
-            switch(this.menu_array[var_index].type)
+            const var_type = this.menu_array[var_index].type == this.menu_types.TYPE_REFERENCE ? this.menu_array[var_index].reference_subtype : this.menu_array[var_index].type;
+            switch(var_type)
             {
                 case this.menu_types.TYPE_VALUE:
-                    return UI.GetValue("Misc", "JAVASCRIPT", "Script items", this.menu_array[var_index].var_name);
+                    return UI.GetValue.apply(null, this.menu_array[var_index].var_name); //Why isn't UI.GetValue good for all menu items? llama pls fix
                 case this.menu_types.TYPE_COLOR:
-                    return UI.GetColor("Misc", "JAVASCRIPT", "Script items", this.menu_array[var_index].var_name);
+                    return UI.GetColor.apply(null, this.menu_array[var_index].var_name);
                 case this.menu_types.TYPE_KEYBIND:
-                    return UI.IsHotkeyActive("Misc", "JAVASCRIPT", "Script items", this.menu_array[var_index].var_name);
-                case this.menu_types.TYPE_REFERENCE:
-                    switch(this.menu_array[var_index].reference_subtype)
-                    { //LLAMA DU HURENSOHN WHY CANT WE PASS ARRAYS INTO MENU FUNCTIONS ANYMORE REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
-                        case this.menu_types.TYPE_VALUE:
-                            return UI.GetValue.apply(null, this.menu_array[var_index].var_name); //Oh well, this way it's good enough
-                        case this.menu_types.TYPE_COLOR:
-                            return UI.GetColor.apply(null, this.menu_array[var_index].var_name);
-                        case this.menu_types.TYPE_KEYBIND:
-                            return UI.IsHotkeyActive.apply(null, this.menu_array[var_index].var_name);
-                        default:
-                            throw new Error("[onetap] invalid type specified for get_item_value for reference call (variable name " + JSON.stringify(menu_array[var_index].var_name) /*dunno how error msgs handle arrays*/ + ", specified type: " + type + ")\n");
-                    }
+                    return UI.IsHotkeyActive.apply(null, this.menu_array[var_index].var_name);
                 default:
-                    throw new Error("[onetap] invalid type specified for get_item_value call (variable name " + menu_array[var_index].var_name + ", specified type: " + type + ")\n");
+                    throw new Error("[onetap] invalid type specified for get_script_item_value call (variable name " + menu_array[var_index].var_name + ", specified type: " + type + ")\n");
             }
         }
-        throw new Error("[onetap] invalid menu item specified for get_item_value, item index " + var_index + "\n");
+        throw new Error("[onetap] invalid menu item specified for get_script_item_value\n");
     },
 
     set_item_visibility: function(var_index, visibility_status)
@@ -97,16 +85,7 @@ const menu =
         {
             if(this.menu_array[var_index].is_item_visible != visibility_status && UI.IsMenuOpen())
             {
-                switch(this.menu_array[var_index].type)
-                {
-                    case this.menu_types.TYPE_REFERENCE:
-                        const temporary_argument_arr = this.menu_array[var_index].var_name;
-                        temporary_argument_arr.push(visibility_status); //Has to be done :(
-                        UI.SetEnabled.apply(null, temporary_argument_arr);
-                        break;
-                    default:
-                        UI.SetEnabled("Misc", "JAVASCRIPT", "Script items", this.menu_array[var_index].var_name, visibility_status);
-                }
+                UI.SetEnabled.apply(null, this.menu_array[var_index].var_name.concat(visibility_status));
                 this.menu_array[var_index].is_item_visible = visibility_status;
             }
         }
@@ -120,27 +99,20 @@ const menu =
     {
         if(typeof(this.menu_array[var_index]) != "undefined")
         {
-            switch(this.menu_array[var_index].type)
+            const var_type = this.menu_array[var_index].type == this.menu_types.TYPE_REFERENCE ? this.menu_array[var_index].reference_subtype : this.menu_array[var_index].type;
+            switch(var_type)
             {
                 case this.menu_types.TYPE_VALUE:
-                    UI.SetValue("Misc", "JAVASCRIPT", "Script items", this.menu_array[var_index].var_name, new_value);
+                    UI.SetValue.apply(null, this.menu_array[var_index].var_name.concat(new_value));
                     break;
                 case this.menu_types.TYPE_COLOR:
-                    UI.SetColor("Misc", "JAVASCRIPT", "Script items", this.menu_array[var_index].var_name, new_value);
+                    UI.SetColor.apply(null, this.menu_array[var_index].var_name.concat(new_value));
                     break;
-                case this.menu_types.TYPE_REFERENCE:
-                    const temporary_argument_arr = this.menu_array[var_index].var_name.concat(new_value);
-                    //temporary_argument_arr.push(new_value);
-                    switch(this.menu_array[var_index].reference_subtype)
+                case this.menu_types.TYPE_KEYBIND:
+                    const keybind_state = this.get_item_value(var_index);
+                    if(keybind_state != new_value)
                     {
-                        case this.menu_types.TYPE_VALUE:
-                            UI.SetValue.apply(null, temporary_argument_arr);
-                            break;
-                        case this.menu_types.TYPE_COLOR:
-                            UI.SetColor.apply(null, temporary_argument_arr);
-                            break;
-                        default: //We can't set a hotkey, can we?
-                            throw new Error("[onetap] invalid type specified for set_item_value for reference call (variable name " + menu_array[var_index].var_name + ", specified type: " + this.menu_array[var_index].reference_subtype + ")\n");
+                        UI.ToggleHotkey.apply(null, this.menu_array[var_index].var_name); //Requires hotkey to be in "Toggle" mode :(
                     }
                     break;
                 default:
@@ -734,7 +706,7 @@ const utilities =
             {
                 return false;
             }
-            const extrapolated_local_eyepos = math.vector.add(local_eye_position, math.vector.mul_fl(Entity.GetProp(utilities.global_variables.local_player, "CBasePlayer", "m_vecVelocity[0]"), 16 * Globals.TickInterval()));
+            const extrapolated_local_eyepos = math.vector.add(local_eye_position, math.vector.mul_fl(Entity.GetProp(utilities.global_variables.local_player, "CBasePlayer", "m_vecVelocity[0]"), 32 * Globals.TickInterval()));
             const entity_stomach_position = Entity.GetHitboxPosition(entity_index, 2);
             if(typeof(entity_stomach_position) != "undefined")
             {
@@ -1228,7 +1200,7 @@ const features =
                     const player = players[i];
                     if(Entity.IsValid(player))
                     {
-                        const player_name = Entity.GetName(player);
+                        const player_name = Entity.GetName(player).toString();
                         if(player_name == "GOTV") //GOTV pops up here, surprisingly
                         { 
                             continue; 
@@ -1249,7 +1221,7 @@ const features =
                 {
                     this.helpers.render_indicators();
                 }
-                if(Input.IsKeyPressed(0x09))
+                if(Input.IsKeyPressed(0x09) && config.generic_settings.indicators & (1 << 4))
                 {
                     this.helpers.render_mm_info();
                 }
