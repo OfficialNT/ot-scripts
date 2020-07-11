@@ -207,7 +207,7 @@ const menu_items =
             menu_items.script_items.visible_only_fakelag = menu.create_checkbox("Enable visible fakelag");
             menu_items.script_items.visible_fakelag_strength = menu.create_slider_int("Lag amount", 0, 8);
 
-            menu_items.script_items.indicators = menu.create_multi_dropdown("Display indicators", ["Aimbot status", "Autowall", "AA", "Lag", "MM"]);
+            menu_items.script_items.indicators = menu.create_multi_dropdown("Display indicators", ["Autofire", "FOV", "Safety", "Bodyaim", "Resolver override", "Autowall", "AA", "Lag", "MM"]);
             
             menu_items.script_items.rbot_shotlogs = menu.create_checkbox("Shot logs");
             menu_items.script_items.killsays = menu.create_checkbox("Killsays");
@@ -878,123 +878,106 @@ const features =
             if(utilities.global_variables.current_weapon_group_script != -1 &&
             !config.generic_settings.ragebot_enabled_hotkey_reference && 
             createmove_data.usercmd_buttons & IN_ATTACK && 
-            (Entity.GetProp(utilities.global_variables.local_player, "CCSPlayer", "m_flFlashDuration") < 2.0 || autowall_key_down) && 
             Globals.Realtime() > this.last_kill_time + config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_kill_delay / 1000 &&
             createmove_data.enemy_array_length > 0)
             {
                 this.aimbot_active = true;
-                const vector_forward = math.vector.add(createmove_data.local_eye_position, math.vector.mul_fl(math.vector.angle_vector(createmove_data.local_viewangles), 8192));
-                const trace_forward = Trace.Line(utilities.global_variables.local_player, createmove_data.local_eye_position, vector_forward); //i hate doing traces, it's HORRIBLE for framerate
-                if(!(Entity.IsValid(trace_forward[0]) && Entity.IsAlive(trace_forward[0]) && Entity.IsEnemy(trace_forward[0])))
+                if(!this.in_aim)
                 {
-                    if(!this.in_aim)
-                    {
-                        this.last_in_attack_time = Globals.Realtime();
-                        this.in_aim = true;
-                    }
-
-                    this.last_in_attack_time + config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_shot_delay / 1000 > Globals.Realtime() ? UserCMD.SetButtons(createmove_data.usercmd_buttons &= ~IN_ATTACK) : this.in_aim = false;
-
-                    const maximum_fov = config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_should_use_dynamic_fov ? utilities.game.get_dynamic_fov(createmove_data.enemies, 
-                        config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_dynamic_fov_min, 
-                        config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_dynamic_fov_max) : config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_static_fov;
-
-                    this.last_fov = maximum_fov;
-
-                    const valid_enemies = [];
-                    for(var i = 0; i < createmove_data.enemy_array_length; i++)
-                    {
-                        const _entity_index = createmove_data.enemies[i];
-                        const entity_head_position = Entity.GetHitboxPosition(_entity_index, 0);
-                        if(typeof(entity_head_position) != "undefined")
-                        {
-                            const angle_to_head = math.angle.calculate_angle(createmove_data.local_eye_position, entity_head_position, createmove_data.local_viewangles);
-                            const fov_to_head = Math.hypot(angle_to_head[0], angle_to_head[1]);
-                            if(maximum_fov > fov_to_head && (utilities.game.is_player_visible(createmove_data.local_eye_position, _entity_index, false, 5) || autowall_key_down))
-                            {
-                                valid_enemies.push({entity_index: _entity_index, fov: fov_to_head});
-                            }
-                        }
-                    }
-
-                    if(valid_enemies.length == 0)
-                    {
-                        return;
-                    }
-
-                    const legitbot_hitboxes = config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_allowed_hitboxes;
-                    const minimum_damage = config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_minimum_damage;
-
-                    valid_enemies.sort(function (enemy_a, enemy_b) { return enemy_a.fov - enemy_b.fov; });
-                    
-                    var best_fov = Infinity;
-                    var best_angle = [];
-
-                    for(var ent = 0; ent < valid_enemies.length; ent++)
-                    {
-                        const entity = valid_enemies[0];
-                        const entity_health = Entity.GetProp(entity.entity_index, "CBasePlayer", "m_iHealth");
-                        const scaled_minimum_damage = entity_health * (minimum_damage / 100);
-                        var should_break = false; //ghetto way of escaping nested forloop
-                        for(var i = 0; i <= 6; i++) //UGLY CODE ALERT
-                        {
-                            if(legitbot_hitboxes & utilities.game.get_script_hitgroup_from_hitbox(i))
-                            {
-                                const hitbox_position = Entity.GetHitboxPosition(entity.entity_index, i)
-                                if(typeof(hitbox_position) != "undefined" && (!Trace.Smoke(createmove_data.local_eye_position, hitbox_position) || autowall_key_down))
-                                {
-                                    const angle_to_hitbox = math.angle.calculate_angle(createmove_data.local_eye_position, hitbox_position, createmove_data.local_viewangles);
-                                    const fov = Math.hypot(angle_to_hitbox[0], angle_to_hitbox[1]); //We already store the FOV to their heads, but that's a very small optimization and basically doesn't matter l0l
-                                    if(best_fov > fov)
-                                    {
-                                        const trace = Trace.Bullet(utilities.global_variables.local_player, entity.entity_index, createmove_data.local_eye_position, hitbox_position);
-                                        if(trace[0] == entity.entity_index && trace[1] > scaled_minimum_damage && (trace[2] || autowall_key_down))
-                                        {
-                                            best_fov = fov;
-                                            best_angle = angle_to_hitbox;
-                                            if(trace[1] > entity_health || fov < 1)
-                                            {
-                                                should_break = true;
-                                                break;
-                                            }
-                                        }
-                                    }
-                                } 
-                            }
-                        }
-
-                        if(should_break)
-                        {
-                            break;
-                        }
-                    }
-                    
-
-                    const recoil = Entity.GetProp(utilities.global_variables.local_player, "CBasePlayer", "m_aimPunchAngle");
-
-                    if(best_fov != Infinity)
-                    {
-                        const using_silent_fov = config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_use_silent_fov;
-                        const silent_fov = config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_silent_fov;
-                        const smooth_amount = using_silent_fov && best_fov <= silent_fov ? 1 : config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_smoothing;
-                        var final_angle = math.vector.add(createmove_data.local_viewangles, math.vector.div_fl(best_angle, smooth_amount));
-                        
-                        if(recoil[0] != 0 || recoil[1] != 0)
-                        {
-                            final_angle[0] -= (recoil[0] - this.last_punch_angle[0]) * config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_rcs_pitch;
-                            final_angle[1] -= (recoil[1] - this.last_punch_angle[1]) * config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_rcs_yaw;
-                        }
-
-                        final_angle = math.angle.normalize(final_angle);
-                        UserCMD.SetViewAngles(final_angle, using_silent_fov == 1 && best_fov <= silent_fov /*yikes*/);
-                    }
-                    this.last_punch_angle = recoil;
+                    this.last_in_attack_time = Globals.Realtime();
+                    this.in_aim = true;
                 }
+
+                this.last_in_attack_time + config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_shot_delay / 1000 > Globals.Realtime() ? UserCMD.SetButtons(createmove_data.usercmd_buttons &= ~IN_ATTACK) : this.in_aim = false;
+
+                const maximum_fov = config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_should_use_dynamic_fov ? utilities.game.get_dynamic_fov(createmove_data.enemies, 
+                    config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_dynamic_fov_min, 
+                    config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_dynamic_fov_max) : config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_static_fov;
+
+                this.last_fov = maximum_fov;
+
+                const valid_enemies = [];
+                for(var i = 0; i < createmove_data.enemy_array_length; i++)
+                {
+                    const _entity_index = createmove_data.enemies[i];
+                    const entity_head_position = Entity.GetHitboxPosition(_entity_index, 0);
+                    if(typeof(entity_head_position) != "undefined")
+                    {
+                        const fov_to_head = Math.hypot.apply(null, math.angle.calculate_angle(createmove_data.local_eye_position, entity_head_position, createmove_data.local_viewangles));
+                        if(maximum_fov > fov_to_head)
+                        {
+                            valid_enemies.push({entity_index: _entity_index, fov: fov_to_head});
+                        }
+                    }
+                }
+
+                if(valid_enemies.length == 0)
+                {
+                    return;
+                }
+
+                const legitbot_hitboxes = config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_allowed_hitboxes;
+                const minimum_damage = config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_minimum_damage;
+
+                valid_enemies.sort(function (enemy_a, enemy_b) { return enemy_a.fov - enemy_b.fov; });
+                    
+                var best_fov = Infinity;
+                var best_angle = [];
+                var best_entity = -1;
+
+                for(var ent = 0; ent < valid_enemies.length; ent++)
+                {
+                    const entity = valid_enemies[ent];
+                    const entity_health = Entity.GetProp(entity.entity_index, "CBasePlayer", "m_iHealth");
+                    const scaled_minimum_damage = entity_health * (minimum_damage / 100);
+                    for(var i = 0; i <= 6; i++) //UGLY CODE ALERT
+                    {
+                        if(legitbot_hitboxes & utilities.game.get_script_hitgroup_from_hitbox(i))
+                        {
+                            const hitbox_position = Entity.GetHitboxPosition(entity.entity_index, i)
+                            if(typeof(hitbox_position) != "undefined" && (!Trace.Smoke(createmove_data.local_eye_position, hitbox_position) || autowall_key_down))
+                            {
+                                const angle_to_hitbox = math.angle.calculate_angle(createmove_data.local_eye_position, hitbox_position, createmove_data.local_viewangles);
+                                const fov = Math.hypot.apply(null, angle_to_hitbox); //We already store the FOV to their heads, but that's a very small optimization and basically doesn't matter l0l
+                                if(best_fov > fov)
+                                {
+                                    const trace = Trace.Bullet(utilities.global_variables.local_player, entity.entity_index, createmove_data.local_eye_position, hitbox_position);
+                                    if(trace[0] == entity.entity_index && trace[1] > scaled_minimum_damage && (trace[2] || autowall_key_down))
+                                    {
+                                        best_fov = fov;
+                                        best_angle = angle_to_hitbox;
+                                        best_entity = entity.entity_index;
+                                    }
+                                }
+                            } 
+                        }
+                    }
+                }
+                    
+
+                const recoil = Entity.GetProp(utilities.global_variables.local_player, "CBasePlayer", "m_aimPunchAngle");
+
+                if(Entity.IsValid(best_entity))
+                {
+                    const using_silent_fov = config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_use_silent_fov;
+                    const silent_fov = config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_silent_fov;
+                    const smooth_amount = using_silent_fov && best_fov <= silent_fov ? 1 : config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_smoothing;
+                    var final_angle = math.vector.add(createmove_data.local_viewangles, math.vector.div_fl(best_angle, smooth_amount));
+                        
+                    if(recoil[0] != 0 || recoil[1] != 0)
+                    {
+                        final_angle[0] -= (recoil[0] - this.last_punch_angle[0]) * config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_rcs_pitch;
+                        final_angle[1] -= (recoil[1] - this.last_punch_angle[1]) * config.weapon_settings[utilities.global_variables.current_weapon_group_script].legitbot_rcs_yaw;
+                    }
+
+                    final_angle = math.angle.normalize(final_angle);
+                    UserCMD.SetViewAngles(final_angle, using_silent_fov == 1 && best_fov <= silent_fov);
+                }
+                this.last_punch_angle = recoil;
             }
-            else
+            else    
             {
                 this.in_aim = false;
-                this.aimbot_active = false; //why does everyone want the tranny indicators that badly?
             }
         }
     },
@@ -1093,7 +1076,6 @@ const features =
             
             render_indicators: function()
             {
-                const indicator_font = Render.AddFont("Verdana", 10, 800);
                 const indicator_selections = config.generic_settings.indicators;
 
                 const aim_data = {active: 0, fov: 0, aim_mode: 0, aim_mode_str: ""};
@@ -1107,16 +1089,14 @@ const features =
                 const fill_indicator_data = function()
                 {
                     const is_ragebot_active = config.generic_settings.ragebot_enabled_hotkey_reference;
-                    aim_data.active = is_ragebot_active ? true : features.legitbot_handler.aimbot_active;
-                    aim_data.fov = is_ragebot_active ? menu.get_item_value(menu_items.references["ragebot_" + setup_helpers.ragebot_internal_weapon_types[utilities.global_variables.current_weapon_group_ragebot] + "_fov_reference"]) : Math.round(features.legitbot_handler.last_fov);
+                    aim_data.active = is_ragebot_active; //autofire shit
+                    aim_data.fov = menu.get_item_value(menu_items.references["ragebot_" + setup_helpers.ragebot_internal_weapon_types[utilities.global_variables.current_weapon_group_ragebot] + "_fov_reference"]);
                     aim_data.aim_mode = is_ragebot_active ? 0 : 1;
                     aim_data.aim_mode_str = is_ragebot_active ? "RAGE" : "LEGIT";
-                    if(is_ragebot_active)
-                    {
-                        aim_data.bodyaim_mode = config.generic_settings.ragebot_bodyaim_hotkey_reference ? 2 : config.reference_states[utilities.global_variables.current_weapon_group_ragebot].prefer_baim_state ? 1 : 0;
-                        aim_data.safepoint_mode = config.generic_settings.ragebot_safepoint_hotkey_reference ? 2 : config.reference_states[utilities.global_variables.current_weapon_group_ragebot].prefer_safepoint_state ? 1 : 0;
-                        aim_data.resolver_override = config.generic_settings.ragebot_resolver_hotkey_reference;
-                    }
+                    
+                    aim_data.bodyaim_mode = config.generic_settings.ragebot_bodyaim_hotkey_reference ? 2 : config.reference_states[utilities.global_variables.current_weapon_group_ragebot].prefer_baim_state ? 1 : 0;
+                    aim_data.safepoint_mode = config.generic_settings.ragebot_safepoint_hotkey_reference ? 2 : config.reference_states[utilities.global_variables.current_weapon_group_ragebot].prefer_safepoint_state ? 1 : 0;
+                    aim_data.resolver_override = config.generic_settings.ragebot_resolver_hotkey_reference;
 
                     if(config.generic_settings.autowall_key_down)
                     {
@@ -1133,54 +1113,60 @@ const features =
                 const base_x = this.screensize[0] * 0.5;
                 var base_y = this.screensize[1] * 0.52;
 
+                const render_indicator = function(text, color)
+                {
+                    const indicator_font = Render.AddFont("Verdana", 8, 600);
+                    Render.StringCustom(base_x + 1, base_y + 1, 1, text, [0, 0, 0, 255], indicator_font);
+                    Render.StringCustom(base_x, base_y, 1, text, color, indicator_font);
+                    base_y += 12;
+                }
                 const mode_colors = [[255, 25, 30, 200], [190, 170, 18, 200], [77.5, 186, 10, 200]]; //generalized for ease of use
 
                 if(indicator_selections & (1 << 0))
                 {
-                    Render.StringCustom(base_x, base_y, 1, aim_data.aim_mode_str, aim_data.active ? mode_colors[2] : mode_colors[0], indicator_font);
-                    base_y += 15;
-    
-                    Render.StringCustom(base_x, base_y, 1, "FOV: " + aim_data.fov, aim_data.active ? mode_colors[2] : mode_colors[0], indicator_font);
-                    base_y += 15;
-
-                    if(aim_data.aim_mode == 0)
-                    {
-                        if(aim_data.bodyaim_mode)
-                        {
-                            Render.StringCustom(base_x, base_y, 1, "BODY", mode_colors[aim_data.bodyaim_mode], indicator_font);
-                            base_y += 15;
-                        }
-                        if(aim_data.safepoint_mode)
-                        {
-                            Render.StringCustom(base_x, base_y, 1, "SAFETY", mode_colors[aim_data.safepoint_mode], indicator_font);
-                            base_y += 15;
-                        }
-                        if(aim_data.resolver_override)
-                        {
-                            Render.StringCustom(base_x, base_y, 1, "OVERRIDE", mode_colors[2], indicator_font);
-                            base_y += 15;
-                        }
-                    }
+                    render_indicator("AF", aim_data.active ? mode_colors[2] : mode_colors[0]);
                 }
-                if(indicator_selections & (1 << 1) && utilities.global_variables.current_weapon_group_script != -1)
+
+                if(indicator_selections & (1 << 1))
                 {
-                    Render.StringCustom(base_x, base_y, 1, "AW", mode_colors[autowall_mode], indicator_font);
-                    base_y += 15;
+                    render_indicator("FOV: " + aim_data.fov.toString(), mode_colors[2]);
                 }
-                if(indicator_selections & (1 << 2) && config.generic_settings.legitaa_master_switch)
+
+                if(indicator_selections & (1 << 2))
                 {
-                    const screen_center_y = this.screensize[1] * 0.5;
-                    const screen_side_top = this.screensize[1] * 0.495;
-                    const screen_side_bottom = this.screensize[1] * 0.505;
-
-                    aa_data.direction == -1 ? Render.Polygon([[this.screensize[0] * 0.541, screen_center_y], [this.screensize[0] * 0.535, screen_side_bottom], [this.screensize[0] * 0.535, screen_side_top]], aa_data.color) : Render.Polygon([[this.screensize[0] * 0.465, screen_side_bottom], [this.screensize[0] * 0.459, screen_center_y], [this.screensize[0] * 0.465, screen_side_top]], aa_data.color);
-
-                    Render.StringCustom(base_x, base_y, 1, "AA " + Math.abs(Math.round(aa_data.fake_delta)), aa_data.color, indicator_font);
-                    base_y += 15;
+                    render_indicator("SAFE", mode_colors[aim_data.safepoint_mode]);
                 }
+
                 if(indicator_selections & (1 << 3))
                 {
-                    Render.StringCustom(base_x, base_y, 1, "LAG", lag_data.color, indicator_font);
+                    render_indicator("BODY", mode_colors[aim_data.bodyaim_mode]);
+                }
+
+                if(indicator_selections & (1 << 4) && aim_data.resolver_override)
+                {
+                    render_indicator("OVERRIDE", mode_colors[2]);
+                }
+
+                if(indicator_selections & (1 << 5))
+                {
+                    render_indicator("AW", mode_colors[autowall_mode]);
+                }
+
+                if(indicator_selections & (1 << 6) && config.generic_settings.legitaa_master_switch)
+                {
+                    if(Math.abs(aa_data.fake_delta) > 10)
+                    {
+                        const screen_center_y = this.screensize[1] * 0.5;
+                        const screen_side_top = this.screensize[1] * 0.495;
+                        const screen_side_bottom = this.screensize[1] * 0.505;
+                    
+                        aa_data.direction == -1 ? Render.Polygon([[this.screensize[0] * 0.541, screen_center_y], [this.screensize[0] * 0.535, screen_side_bottom], [this.screensize[0] * 0.535, screen_side_top]], aa_data.color) : Render.Polygon([[this.screensize[0] * 0.465, screen_side_bottom], [this.screensize[0] * 0.459, screen_center_y], [this.screensize[0] * 0.465, screen_side_top]], aa_data.color);
+                    }
+                    render_indicator("AA " + Math.abs(Math.floor(aa_data.fake_delta)), aa_data.color);
+                }
+                if(indicator_selections & (1 << 7))
+                {
+                    render_indicator("FL", lag_data.color);
                 }
             },
 
@@ -1221,7 +1207,7 @@ const features =
                 {
                     this.helpers.render_indicators();
                 }
-                if(Input.IsKeyPressed(0x09) && config.generic_settings.indicators & (1 << 4))
+                if(Input.IsKeyPressed(0x09) && config.generic_settings.indicators & (1 << 8))
                 {
                     this.helpers.render_mm_info();
                 }
