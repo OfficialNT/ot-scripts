@@ -1,4 +1,4 @@
-//Legitbot code is terrible ATM, need to recode. Better than the previous one, though :D
+//Needs some updates IIRC, legitbot doesn't work in this version? Weird how it worked on bots, though
 
 const menu = 
 {
