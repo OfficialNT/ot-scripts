@@ -1,3 +1,6 @@
+///Never really bothered to finish the script :( Don't have a sub anyway.
+
+
 //i tried to go full on tranny for this code, dont think i quite succeeded
 //code is basically obfuscated since its so tranny
 
