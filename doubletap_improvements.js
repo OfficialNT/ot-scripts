@@ -1,3 +1,5 @@
+//Unfinished (meant to add some other shit in there), might finish sometime later (don't have a subscription ATM and can't be fucked buying one)
+
 const menu = 
 {
     menu_types: 
