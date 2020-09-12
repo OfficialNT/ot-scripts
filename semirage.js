@@ -1,5 +1,16 @@
 //Needs some updates IIRC, legitbot doesn't work in this version? Weird how it worked on bots, though
 
+/*
+    For the OTV3 crack users:
+        -   the "No autowall" automatic penetration option will not work, use "Legit" instead
+        -   the legitbot will not work (not like it works on the proper build)
+        -   the fake lag indicator will not work
+        -   I probably missed something
+        
+    I do not intend to support the OTV3 crack.
+    If any issues arise and you are using it, correct them yourself.
+*/
+
 const menu = 
 {
     menu_types: 
