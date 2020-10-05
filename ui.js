@@ -27,14 +27,13 @@ const math = {
 };
 
 const draggable = {
-    draggable_cnt: 0,
     draggables: [],
 
     create_draggable: function(starting_size_x, starting_size_y, callback) {
         const screen_size = Render.GetScreenSize();
 
-        const slider_x = UI.AddSliderInt(["Visuals", "SUBTAB_MGR", "Identity", "SHEET_MGR", "Identity"], "_draggable_" + this.draggable_cnt + "_x", 0, screen_size[0]);
-        const slider_y = UI.AddSliderInt(["Visuals", "SUBTAB_MGR", "Identity", "SHEET_MGR", "Identity"], "_draggable_" + this.draggable_cnt + "_y", 0, screen_size[1]);
+        const slider_x = UI.AddSliderInt(["Visuals", "SUBTAB_MGR", "Identity", "SHEET_MGR", "Identity"], "_draggable_" + this.draggables.length + "_x", 0, screen_size[0]);
+        const slider_y = UI.AddSliderInt(["Visuals", "SUBTAB_MGR", "Identity", "SHEET_MGR", "Identity"], "_draggable_" + this.draggables.length + "_y", 0, screen_size[1]);
         
         UI.SetEnabled(slider_x, 0);
         UI.SetEnabled(slider_y, 0);
